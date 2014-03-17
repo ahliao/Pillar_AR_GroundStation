@@ -7,11 +7,15 @@
 #include "keyboard_controller.h"
 #include "drone_init.h"
 
+// Video headers
+#include "Video/ardrone_video.h"
+#include "Video/ardrone_constants.h"
+#include "Video/socket_p.h"
+
 // Headers from the Parrot API
-#include "navdata_common.h"
+//#include "navdata_common.h"
 
 // Libraries for networking and communciation
-#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -20,6 +24,9 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <csignal>
+
+#include "navdata_common.h"
 
 // ffmpeg library for video decoding
 #ifndef INT64_C
@@ -37,144 +44,73 @@ extern "C" {
 // NCurses API for the keyboard input
 #include <curses.h>
 
-//char navmsg[NAVDATA_BUFFER_SIZE];
+// DEBUG libraries
+#include <iostream>
 
 using namespace std;
+using namespace cv;
 
 int main()
 {
-	// Init Curses
-	/*initscr();	// curses call to init window
-	cbreak();			// config so no waiting for Enter
-	noecho();			// config for no echo of input
-	clear();
+	signal(SIGPIPE, SIG_IGN); // Prevents termination if socket is down
 
-	int32_t one = 1, zero = 0;
+	// Create the Video handler
+	cout << "Creating ARDrone2Video Object\n";
+	ARDrone2Video *m_video = new ARDrone2Video();
+	Address video_address("192.168.1.1", 5555);	// Address to the drone's video
+	// Connect the handler to the drone
+	m_video->start(video_address);
 
-	// NCurses variables
-	int term_row, term_col;
-	getmaxyx(stdscr, term_row, term_col);
+	// Check if video is connected
+	// If not, continue program without video
+	if (m_video->isStarted()) cout << "Successful in connecting to drone\n";
 
-	mvprintw(0,0,"AR Drone 2 Controller v0.02\n");*/
+	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
 
-	// register the codecs and file formats
-	av_register_all();
-	avcodec_register_all();
-	avformat_network_init();
+	// Init the Navdata and command sockets
+	init_ports();
 
-	// Open video file
-	//mvprintw(1,1,"WORKED");
-	//refresh();
-	const char		*drone_addr = "http://192.168.1.1:5555";
-	AVFormatContext *pFormatCtx = NULL;
-	while (avformat_open_input(&pFormatCtx, drone_addr, NULL, NULL) != 0) {
-		//mvprintw(3,0,"Could not open the video file...Retrying...");
-		cout << "Could not open video file\n";
-		//refresh();
+	navdata_t* navdata = 0;
+
+	// Handle image processing here
+	while (1) {
+		m_video->fetch();			// Decode the frame
+		m_video->latestImage(p);	// Store frame into the Mat
+
+		// Do image processing
+
+
+		// Get navdata
+		get_navdata(navdata);
+
+		// Output navdata
+		cout << "header " << navdata->header << endl
+			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
+			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
+			 << "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
+			 << "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
+			 << "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
+			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
+			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
+			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
+
+		// Handle control using video and navdata
+		if (drone_control()) break;
+
+		// show the frame
+		imshow("Test", p);
+		if (waitKey(1) == 27) break;
 	}
-	//mvprintw(2,1,"WORKED");
-	//refresh();
-
-	avformat_find_stream_info(pFormatCtx, NULL);	// Get stream info
-	av_dump_format(pFormatCtx, 0, drone_addr, 0);	// dump to std output
-
-	// Find decoder for the stream
-	AVCodecContext	*pCodecCtx;
-	AVCodec			*pCodec;
-	pCodecCtx	= pFormatCtx->streams[0]->codec;
-	pCodec		= avcodec_find_decoder(pCodecCtx->codec_id);
-
-	avcodec_open2(pCodecCtx, pCodec, NULL);	// open codec 
-
-	/*if(init_ports()) 
-	{
-		mvprintw(0,0, "Error initializing the ports");
-		exit(1);
-	}
-
-	if (bind(navdata_socket, (struct sockaddr *) &pc_addr, sizeof(pc_addr)) < 0) {
-		mvprintw(1,0,"Error binding navdata_socket to pc_addr");
-		exit(1);
-	}
-
-	// set unicast mode on
-	sendto(navdata_socket, &one, 4, 0, 
-			(struct sockaddr *) &drone_nav, sizeof(drone_nav));*/
-	
-	// variables for getting video
-	AVPacket packet;
-	AVFrame *pFrame;
-	pFrame = avcodec_alloc_frame();
-	int attemptNum, frameDecoded;
-
-	// Converting the frame
-	AVFrame *pFrame_BGR24;
-	uint8_t *buffer_BGR24;
-	struct SwsContext *pConvertCtx_BGR24;
-
-	// Allocate AVFrame 
-	pFrame_BGR24 = avcodec_alloc_frame();
-	if (pFrame_BGR24 == NULL) {
-		mvprintw(12,0,"Could not allocate pFrame_BGR24");
-		return 1;
-	}
-	// find image size and allocate buffer
-	buffer_BGR24 = (uint8_t *) av_malloc(avpicture_get_size(PIX_FMT_BGR24,
-				pCodecCtx->width, pCodecCtx->height));
-	// Assign buffer to image planes
-	avpicture_fill((AVPicture *) pFrame_BGR24, buffer_BGR24,
-			PIX_FMT_BGR24, pCodecCtx->width, pCodecCtx->height);
-	// format conversion context
-	pConvertCtx_BGR24 = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt,
-			pCodecCtx->width, pCodecCtx->height, PIX_FMT_BGR24,
-			SWS_SPLINE, NULL, NULL, NULL);
-
 
 	// loop for controlling the drone
 	int i = 0;
-	while(1) {
-		//if (drone_control()) break;
-
-		// read the navdata received
-		//if (get_navdata(i++)) break;
-
-		// Read and convert the video frames
-		//mvprintw(12,0,"Frame Read: %d", attemptNum);
-		// read frame
-		if(av_read_frame(pFormatCtx, &packet) < 0){
-			//mvprintw(13,0,"Could not read frame");
-			continue;
-		}
-
-		// Decode the frame
-		if (avcodec_decode_video2(pCodecCtx, pFrame, &frameDecoded, &packet) < 0) {
-			//mvprintw(13,0,"Could no decode frame");
-			continue;
-		}
-
-		// convert the frame to BGR
-		if (frameDecoded) {
-			sws_scale(pConvertCtx_BGR24, pFrame->data, pFrame->linesize, 0,
-					pCodecCtx->height, pFrame_BGR24->data, pFrame_BGR24->linesize);
-			attemptNum++;
-		}
-		//refresh();
-	}
-
-	// Release the frames
-	av_free(pFrame);
-	av_free(pFrame_BGR24);
-	av_free(buffer_BGR24);
-	sws_freeContext(pConvertCtx_BGR24);
-	avcodec_close(pCodecCtx);
-	avformat_close_input(&pFormatCtx);
-
-	// TODO closing program stuff (move to separate function)
-	//endwin();	// return the terminal to the system
 
 	// close the sockets
-	//close(at_socket);
-	//close(navdata_socket);
+	close_ports();
+
+	// Halt the video handler
+	m_video->end();
+	delete m_video;
 
 	return 0;
 }

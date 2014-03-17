@@ -46,6 +46,9 @@ int init_ports();
 // REQURIES: navdata_socket is connected with the pc_addr
 // MODIFIES: terminal (ncurses)
 // EFFECTS:  receives the navdata from the drone and displays it
-int get_navdata(int i);
+int get_navdata(navdata_t * data);
+
+// EFFECTS: closes at_socket and navdata_socket
+void close_ports();
 
 #endif // DRONE_INIT_H

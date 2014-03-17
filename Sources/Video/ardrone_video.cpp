@@ -140,13 +140,13 @@ bool ARDrone2Video::fetch()
 
 	if (m_state == Normal && header.frame_number != lastFrame + 1) {
 		m_state = WaitForIFrame;
-		std::cout << "FRAME MISSED (got " << header.frame_number 
-			<< ", expected" << (lastFrame + 1) <<  ")" << std::endl;
+		//std::cout << "FRAME MISSED (got " << header.frame_number 
+		//	<< ", expected" << (lastFrame + 1) <<  ")" << std::endl;
 		return true;
 	} else if (m_state == WaitForIFrame && 
 		(header.frame_type == FRAME_TYPE_IDR_FRAME
 		|| header.frame_type == FRAME_TYPE_I_FRAME)) {
-		std::cout << "Got our I Frame" << std::endl;
+		//std::cout << "Got our I Frame" << std::endl;
 		m_state = Normal;
 	} else if(m_state == WaitForIFrame) {
 		return true;
@@ -179,7 +179,7 @@ bool ARDrone2Video::fetch()
 		lastRead = seconds();
 	}
 	
-	std::cout << "Read " << read << " bytes from video stream" << std::endl;
+	//std::cout << "Read " << read << " bytes from video stream" << std::endl;
 
 	adjustDimensions(header);
 
@@ -191,7 +191,7 @@ bool ARDrone2Video::fetch()
 	int done = 0;
 
 	if(avcodec_decode_video2(m_codecCtx, m_frame, &done, &packet) < 0) {
-		std::cout << "Didn't decode frame" << std::endl;
+		//std::cout << "Didn't decode frame" << std::endl;
 		return true;
 	}
 

@@ -1,7 +1,6 @@
-#ifndef _ARDRONE_VIDEO_P_HPP_
-#define _ARDRONE_VIDEO_P_HPP_
+#ifndef ARDRONE_VIDEO_P_H
+#define ARDRONE_VIDEO_P_H
 
-#include "ardrone_video.h"
 #include "ardrone_constants.h"
 #include "util.h"
 

@@ -56,17 +56,17 @@ int init_ports()
 	return 0;	// return zero if nothing went wrong
 }
 
-int get_navdata(int i)
+int get_navdata(navdata_t *data)
 {
 	// read the navdata received
-	mvprintw(3,0,"Navdata Received %d", i);
+	//mvprintw(3,0,"Navdata Received %d", i);
 	int l, size = 0;
 	size = recvfrom(navdata_socket, &msg[0], NAVDATA_BUFFER_SIZE, 0x0, 
 			(struct sockaddr *)&from, (socklen_t *) &l);
 	if (size == 0) return 1;
-	mvprintw(4,0,"read %d", size); 
-	navdata_t *data = (navdata_t *) msg;
-	mvprintw(5,0,"header %d", data->header);
+	//mvprintw(4,0,"read %d", size); 
+	data = (navdata_t *) msg;
+	/*mvprintw(5,0,"header %d", data->header);
 	mvprintw(6,0,"Battery %d", 
 			((navdata_demo_t*)((data->options)))->vbat_flying_percentage);
 	mvprintw(7,0,"Alt %d", 
@@ -74,6 +74,12 @@ int get_navdata(int i)
 	mvprintw(8,0,"Vx %d",
 			((navdata_demo_t*)((data->options)))->vx);
 	mvprintw(9,0,"Theta %f",
-			((navdata_demo_t*)((data->options)))->theta);
+			((navdata_demo_t*)((data->options)))->theta);*/
 	return 0;
+}
+
+void close_ports() {
+	// close the sockets
+	close(at_socket);
+	close(navdata_socket);
 }
