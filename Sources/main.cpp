@@ -11,9 +11,10 @@
 #include "Video/ardrone_video.h"
 #include "Video/ardrone_constants.h"
 #include "Video/socket_p.h"
+#include "Video/tag_reader.h"
 
-// Headers from the Parrot API
-//#include "navdata_common.h"
+// Navdata structs
+#include "navdata_common.h"
 
 // Libraries for networking and communciation
 #include <cstdio>
@@ -25,8 +26,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <csignal>
-
-#include "navdata_common.h"
 
 // ffmpeg library for video decoding
 #ifndef INT64_C
@@ -40,7 +39,15 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-// TODO: Consider using SDL
+// Include the OpenMP
+#include "omp.h"
+
+// TODO: Consider using SDL for the UI
+
+// OpenCV headers
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+
 // NCurses API for the keyboard input
 #include <curses.h>
 
@@ -65,8 +72,16 @@ int main()
 	// If not, continue program without video
 	if (m_video->isStarted()) cout << "Successful in connecting to drone\n";
 
+	// Init any image processing 
+	// TODO: handle the bottom camera
 	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
 
+	// Init TagReader object
+	TagReader m_tagreader;
+	cout << "Created TagReader\n";
+	// Init TagData
+	TagData data;
+	
 	// Init the Navdata and command sockets
 	init_ports();
 
@@ -78,7 +93,8 @@ int main()
 		m_video->latestImage(p);	// Store frame into the Mat
 
 		// Do image processing
-
+		m_tagreader.process_Mat(p, data);
+		cout << "Tag ID: " << data.id << endl;
 
 		// Get navdata
 		get_navdata(navdata);
@@ -98,12 +114,9 @@ int main()
 		if (drone_control()) break;
 
 		// show the frame
-		imshow("Test", p);
+		imshow("Camera", p);
 		if (waitKey(1) == 27) break;
 	}
-
-	// loop for controlling the drone
-	int i = 0;
 
 	// close the sockets
 	close_ports();
