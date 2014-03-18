@@ -1,5 +1,5 @@
 CPP = g++
-CPPFLAGS = -g -Wall
+CPPFLAGS = -g -Wall -fopenmp
 OBJ_DIR = ../obj/
 
 MAINSRCS := $(wildcard *.cpp)

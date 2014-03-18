@@ -29,10 +29,11 @@ TagReader::TagReader()
 	// Instantiate a tag family and pass to detector
 	tf = tag36h11_create();
 	td = april_tag_detector_create(tf);
-	td->nthreads = 2;
+	td->nthreads = 8;
 	td->seg_sigma = 0.8;
-	td->min_mag = 0.004;
-	td->seg_decimate = 2; // stops the lag spikes
+	td->min_mag = 0;
+	td->seg_decimate = 3; // stops the lag spikes
+	// Set to 2 for better detection but slower rate
 }
 
 TagReader::~TagReader()
@@ -48,6 +49,13 @@ TagReader::~TagReader()
 // EFFECTS:  Finds April Tags and stores info in data
 void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 {
+	// put the data into the QR_Data struct
+	data.distance = -1;
+	data.angle = -1;
+	data.x = -1;
+	data.y = -1;
+	data.id = -1;
+
 	// Form an image_u8 with the image
 	image_u8_t *im = image_u8_create_from_rgb3(img.cols, img.rows, 
 		(uint8_t *)img.data, img.step);

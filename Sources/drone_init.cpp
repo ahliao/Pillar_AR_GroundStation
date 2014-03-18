@@ -53,10 +53,16 @@ int init_ports()
 	drone_nav.sin_addr.s_addr = inet_addr(WIFI_MYKONOS_IP);
 	drone_nav.sin_port = htons(NAVDATA_PORT);
 
+	if (bind(navdata_socket, (struct sockaddr *) &pc_addr, sizeof(pc_addr)) < 0) {
+		std::cout << "Error binding navdata_socket to pc_addr\n";
+		return 0;
+	}
+	else std::cout << "bound navdaa_socket\n";
+
 	return 0;	// return zero if nothing went wrong
 }
 
-int get_navdata(navdata_t *data)
+int get_navdata(navdata_t **data)
 {
 	// read the navdata received
 	//mvprintw(3,0,"Navdata Received %d", i);
@@ -65,7 +71,7 @@ int get_navdata(navdata_t *data)
 			(struct sockaddr *)&from, (socklen_t *) &l);
 	if (size == 0) return 1;
 	//mvprintw(4,0,"read %d", size); 
-	data = (navdata_t *) msg;
+	*data = (navdata_t *) msg;
 	/*mvprintw(5,0,"header %d", data->header);
 	mvprintw(6,0,"Battery %d", 
 			((navdata_demo_t*)((data->options)))->vbat_flying_percentage);

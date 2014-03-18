@@ -59,7 +59,7 @@ using namespace cv;
 
 int main()
 {
-	signal(SIGPIPE, SIG_IGN); // Prevents termination if socket is down
+	//signal(SIGPIPE, SIG_IGN); // Prevents termination if socket is down
 
 	// Create the Video handler
 	cout << "Creating ARDrone2Video Object\n";
@@ -87,17 +87,32 @@ int main()
 
 	navdata_t* navdata = 0;
 
+	char command[256];
+	int seq = 0;
+
+	int32_t one = 1;
+	cout << navdata_socket << endl;
+	// set unicast mode on
+	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
 	// Handle image processing here
-	while (1) {
+
+	for(;;) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(p);	// Store frame into the Mat
-
 		// Do image processing
 		m_tagreader.process_Mat(p, data);
 		cout << "Tag ID: " << data.id << endl;
+		
+		// Handle control using video and navdata
+		if (drone_control()) break;
+
+		//sendto(at_socket, command, strlen(command), 0, 
+		//		(struct sockaddr*)&drone_at, sizeof(drone_at));
+		//seq++;
+		//cout << seq << endl;
 
 		// Get navdata
-		get_navdata(navdata);
+		get_navdata(&navdata);
 
 		// Output navdata
 		cout << "header " << navdata->header << endl
@@ -109,9 +124,6 @@ int main()
 			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
 			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
 			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
-
-		// Handle control using video and navdata
-		if (drone_control()) break;
 
 		// show the frame
 		imshow("Camera", p);
