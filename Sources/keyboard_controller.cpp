@@ -31,6 +31,8 @@ char drone_control()
 		sprintf(command, "AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", seq);
 	else if (seq < 4) // tell drone it is on flat land
 		sprintf(command, "AT*FTRIM=%d\r", seq);
+	else if (seq < 6)
+		sprintf(command, "AT*CONFIG=%d,\"video:video_channel\",\"1\"\r", seq);
 	/*else if ((input = getch()) != 0) 
 	{	// DO NOT HOLD DOWN KEYS
 		if (input == '1') 

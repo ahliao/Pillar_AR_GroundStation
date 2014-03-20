@@ -39,7 +39,11 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-// Include the OpenMP
+// Timer Tests
+#include <ctime>
+
+// TODO: REMOVE
+// Include the OpenMP 
 #include "omp.h"
 
 // TODO: Consider using SDL for the UI
@@ -114,16 +118,20 @@ int main()
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(p);	// Store frame into the Mat
 		// Do image processing
+
+		// Timing test
+		timeval start, end;
+		gettimeofday(&start, NULL);
 		m_tagreader.process_Mat(p, data);
+		gettimeofday(&end, NULL);
+		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
+				 end.tv_usec - start.tv_usec;
+		cout << "Tag detect time: " << delta << " ms" << endl;
+
 		cout << "Tag ID: " << data.id << endl;
 		
 		// Handle control using video and navdata
 		if (drone_control()) break;
-
-		//sendto(at_socket, command, strlen(command), 0, 
-		//		(struct sockaddr*)&drone_at, sizeof(drone_at));
-		//seq++;
-		//cout << seq << endl;
 
 		// Get navdata
 		//get_navdata(&navdata);
