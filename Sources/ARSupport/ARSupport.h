@@ -20,10 +20,18 @@ class ARSupport
 {
 	public:
 		// Constructor and Destructor
-		ARSupport();
+		ARSupport(int ar_sock, int navdata_sock, sockaddr_in pc_addr,
+				sockaddr_in drone_at, sockaddr_in drone_nav);
 		~ARSupport();
+
+		
 	
 	private:
+		// The sockets
+		int m_at_socket, m_navdata_socket;
+
+		// Socket address config
+		sockaddr_in m_pc_addr, m_drone_at, m_drone_nav, m_from;
 
 };
 

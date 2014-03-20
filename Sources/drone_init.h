@@ -13,9 +13,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-// NCurses API for the keyboard input
-#include <curses.h>
-
 // Headers from the Parrot API
 #include "navdata_common.h"
 
