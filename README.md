@@ -8,6 +8,7 @@ Completed Features:
 
 
 TODO Features (in order of priority):
+!!! - Someone needs to revise the TagData that we get !!!
 1. Combine video, navdata, and command 
 2. Add in AprilTags + Image stitching
 3. Waypoint control loop

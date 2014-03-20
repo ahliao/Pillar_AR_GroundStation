@@ -65,23 +65,11 @@ int init_ports()
 int get_navdata(navdata_t **data)
 {
 	// read the navdata received
-	//mvprintw(3,0,"Navdata Received %d", i);
 	int l, size = 0;
 	size = recvfrom(navdata_socket, &msg[0], NAVDATA_BUFFER_SIZE, 0x0, 
 			(struct sockaddr *)&from, (socklen_t *) &l);
 	if (size == 0) return 1;
-	std::cout << "Got navdata\n";
-	//mvprintw(4,0,"read %d", size); 
 	*data = (navdata_t *) msg;
-	/*mvprintw(5,0,"header %d", data->header);
-	mvprintw(6,0,"Battery %d", 
-			((navdata_demo_t*)((data->options)))->vbat_flying_percentage);
-	mvprintw(7,0,"Alt %d", 
-			((navdata_demo_t*)((data->options)))->altitude);
-	mvprintw(8,0,"Vx %d",
-			((navdata_demo_t*)((data->options)))->vx);
-	mvprintw(9,0,"Theta %f",
-			((navdata_demo_t*)((data->options)))->theta);*/
 	return 0;
 }
 
