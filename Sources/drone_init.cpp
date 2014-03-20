@@ -70,6 +70,7 @@ int get_navdata(navdata_t **data)
 	size = recvfrom(navdata_socket, &msg[0], NAVDATA_BUFFER_SIZE, 0x0, 
 			(struct sockaddr *)&from, (socklen_t *) &l);
 	if (size == 0) return 1;
+	std::cout << "Got navdata\n";
 	//mvprintw(4,0,"read %d", size); 
 	*data = (navdata_t *) msg;
 	/*mvprintw(5,0,"header %d", data->header);

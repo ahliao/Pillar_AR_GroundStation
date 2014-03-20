@@ -54,8 +54,20 @@ extern "C" {
 // DEBUG libraries
 #include <iostream>
 
+#include <pthread.h>
+
 using namespace std;
 using namespace cv;
+
+navdata_t* navdata = 0;
+bool running = true;
+
+void* test(void *)
+{
+	while (running) {
+		get_navdata(&navdata);
+	}
+}
 
 int main()
 {
@@ -85,7 +97,6 @@ int main()
 	// Init the Navdata and command sockets
 	init_ports();
 
-	navdata_t* navdata = 0;
 
 	char command[256];
 	int seq = 0;
@@ -95,6 +106,9 @@ int main()
 	// set unicast mode on
 	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
 	// Handle image processing here
+
+	pthread_t thread1;
+	pthread_create(&thread1, NULL, &test, NULL);
 
 	for(;;) {
 		m_video->fetch();			// Decode the frame
@@ -112,9 +126,10 @@ int main()
 		//cout << seq << endl;
 
 		// Get navdata
-		get_navdata(&navdata);
+		//get_navdata(&navdata);
 
 		// Output navdata
+		if (navdata != 0) {
 		cout << "header " << navdata->header << endl
 			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
 			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
@@ -124,11 +139,15 @@ int main()
 			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
 			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
 			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
+		}
 
 		// show the frame
+		// TODO: Probably switch to SDL or other
 		imshow("Camera", p);
 		if (waitKey(1) == 27) break;
 	}
+	running = false;
+	pthread_join(thread1, NULL);
 
 	// close the sockets
 	close_ports();

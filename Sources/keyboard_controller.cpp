@@ -22,8 +22,6 @@
 #include <curses.h>
 int seq = 0;
 
-char running = 1;
-
 char drone_control()
 {
 	char command[256];
