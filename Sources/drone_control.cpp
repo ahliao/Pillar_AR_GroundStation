@@ -4,7 +4,7 @@
 // Function: Functions for controlling the drone with a keyboard
 
 // Pillar headers
-#include "keyboard_controller.h"
+#include "drone_control.h"
 #include "drone_init.h"
 
 // Libraries for networking and communciation
@@ -20,11 +20,11 @@
 
 // NCurses API for the keyboard input
 #include <curses.h>
-int seq = 0;
+//int seq = 0;
 
-char drone_control()
+void drone_control()
 {
-	char command[256];
+	/*char command[256];
 	char input = 0;
 	input = 0;
 	if (seq < 2) 	// set the config for reduced data (twice for sureness)
@@ -32,7 +32,10 @@ char drone_control()
 	else if (seq < 4) // tell drone it is on flat land
 		sprintf(command, "AT*FTRIM=%d\r", seq);
 	else if (seq < 6)
-		sprintf(command, "AT*CONFIG=%d,\"video:video_channel\",\"1\"\r", seq);
+		sprintf(command, "AT*CONFIG=%d,\"video:video_codec\",\"131\"\r", seq);
+	else if (seq < 8)
+		// Change the video
+		sprintf(command, "AT*CONFIG=%d,\"video:video_channel\",\"1\"\r", seq);*/
 	/*else if ((input = getch()) != 0) 
 	{	// DO NOT HOLD DOWN KEYS
 		if (input == '1') 
@@ -70,13 +73,11 @@ char drone_control()
 			return 1;
 		}
 	}*/
-	else
+	/*else
 		sprintf(command, "AT*COMWDG=%d\r",seq); // reset comm watchdog
 
 	sendto(at_socket, command, strlen(command), 0, 
 			(struct sockaddr*)&drone_at, sizeof(drone_at));
-	seq++;
+	seq++;*/
 	//usleep(100000); // should be less than 0.5s to get all data
-
-	return 0;
 }

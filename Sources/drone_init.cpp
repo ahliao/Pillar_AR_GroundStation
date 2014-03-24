@@ -12,7 +12,11 @@ int at_socket = -1,			// sendto
 
 // structs to hold the config of the socket addresses
 struct sockaddr_in 	pc_addr, drone_at, drone_nav, from;
+
 char msg[NAVDATA_BUFFER_SIZE];	// navdata message
+char command[256];
+
+uint32_t seq = 0;
 
 // Converts the IEEE 754 floating-point format to the respective integer form
 int IEEE754toInt(const float &a)
@@ -62,6 +66,12 @@ int init_ports()
 	return 0;	// return zero if nothing went wrong
 }
 
+void close_ports() {
+	// close the sockets
+	close(at_socket);
+	close(navdata_socket);
+}
+
 int get_navdata(navdata_t **data)
 {
 	// read the navdata received
@@ -73,8 +83,83 @@ int get_navdata(navdata_t **data)
 	return 0;
 }
 
-void close_ports() {
-	// close the sockets
-	close(at_socket);
-	close(navdata_socket);
+// REQUIRES: The drone and computer are connected and on
+// EFFECTS:	 sends AT commands to set the config values on the drone
+void drone_config()
+{
+	// init the drone configs
+	// TODO: Decide what we want here
+}
+
+// if b is true, sets drone to send reduced navdata
+void set_drone_navdata_demo(bool b)
+{
+	if (b)
+		sprintf(command, "AT*CONFIG=%d,\"general:navdata_demo\",\"TRUE\"\r", seq);
+	else
+		sprintf(command, "AT*CONFIG=%d,\"general:navdata_demo\",\"FALSE\"\r", seq);
+	send_drone_command(command);
+}
+
+// Config additional navdata options
+void set_drone_navdata_options(NavdataOptions options)
+{
+	// TODO: choose more navdata options
+	sprintf(command, "AT*CONFIG=%d,\"general:navdata_options\",\"13\"\r", seq);
+	send_drone_command(command);
+}
+
+// Set which gain/config values to use if outside or inside
+void set_drone_outdoor(bool outside)
+{
+	if (outside)
+		sprintf(command, "AT*CONFIG=%d,\"control:outdoor\",\"TRUE\"\r", seq);
+	else
+		sprintf(command, "AT*CONFIG=%d,\"control:outdoor\",\"FALSE\"\r", seq);
+	send_drone_command(command);
+}
+
+// Tell drone if OUTDOOR shell is attached
+// set to false if using indoor shell
+void set_drone_outdoor_shell(bool outsideShell)
+{
+	if (outsideShell)
+		sprintf(command, "AT*CONFIG=%d,\"control:flight_without_shell\",\"TRUE\"\r", seq);
+	else
+		sprintf(command, "AT*CONFIG=%d,\"control:flight_without_shell\",\"FALSE\"\r", seq);
+	send_drone_command(command);
+}
+
+///////////////////////////////////////////////////////////
+// These functions are set to the inside or outside field///
+// Depending on what 'outside' is set to //////////////////
+
+// Sets the max attitude the drone can go (in millimeters)
+void set_drone_attitude_max(uint32_t max)
+{
+	sprintf(command, "AT*CONFIG=%d,\"control:altitude_max\",\"%d\"\r", seq, max);
+	send_drone_command(command);
+}
+
+// Sets the max vertical speed of the drone (200 to 2000 mm/sec)
+void set_drone_vz_max(uint32_t max)
+{
+	sprintf(command, "AT*CONFIG=%d,\"control:control_vz_max\",\"%d\"\r", seq, max);
+	send_drone_command(command);
+}
+
+// Sets the max yaw (rotate) speed (0.7 to 6.11 rad/sec)
+void set_drone_vyaw_max(uint32_t max)
+{
+	sprintf(command, "AT*CONFIG=%d,\"control:control_yaw\",\"%d\"\r", seq, max);
+	send_drone_command(command);
+}
+
+// Send the AT* command to the drone and increment the seq number
+void send_drone_command(char command[])
+{
+	// TODO: make sure sockets are open
+	sendto(at_socket, command, strlen(command), 0, 
+			(struct sockaddr*)&drone_at, sizeof(drone_at));
+	++seq;
 }

@@ -47,10 +47,6 @@ class TagReader
 		void process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg);
 
 	private:
-		// REQUIRES: None
-		// EFFECT
-		void init_tag_reader();
-
 		// The width and height of the frame
 		int frameWidth;
 		int frameHeight;
@@ -60,7 +56,7 @@ class TagReader
 		int frameMidY;
 		
 		// Linear coeffiecents for altitude
-		int distance_M;
+		double distance_M;
 		int distance_B;
 
 		// April tag family and detector
@@ -78,8 +74,6 @@ class TagReader
 		double theta2_deg;	// theta2 in radians
 		double x_d;
 		double y_d;
-		double x_ab;
-		double y_ab;
 		int rel_x, rel_y;	// The data from the QR Code
 };
 

@@ -26,14 +26,21 @@ float map_tag_spacing = 1; // Default is 1 meter
 // Constructor
 TagReader::TagReader()
 {
+	frameWidth = 640;
+	frameHeight = 360;
+	frameMidX = 320;
+	frameMidY = 180;
+	distance_M = -0.15;
+	distance_B = 90;
+
 	// Instantiate a tag family and pass to detector
 	tf = tag36h11_create();
 	td = april_tag_detector_create(tf);
 	td->nthreads = 8;
 	td->seg_sigma = 0.8;
 	td->min_mag = 0;
-	td->seg_decimate = 3; // stops the lag spikes
-	// Set to 2 for better detection but slower rate
+	td->seg_decimate = 2; // stops the lag spikes
+	// Set to 1 for better detection but slower rate
 }
 
 TagReader::~TagReader()
@@ -88,8 +95,8 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 		qr_length = sqrt((vp[0].x - vp[1].x) * (vp[0].x - vp[1].x) +
 				(vp[0].y - vp[1].y) * (vp[0].y - vp[1].y));
 		qr_distance = qr_length * distance_M + distance_B;
-		//printf("Length: %i\n", qr_length);
-		//printf("Distance: %f\n", qr_distance);
+		printf("Length: %i\n", qr_length);
+		printf("Distance: %f\n", qr_distance);
 
 		// Get the angle of the square/rectangle
 		qr_angle = r.angle;
@@ -130,14 +137,14 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 		y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
-		x_ab = x_d + rel_x;
-		y_ab = y_d + rel_y;
+		//x_ab = x_d + rel_x;
+		//y_ab = y_d + rel_y;
 
 		// put the data into the QR_Data struct
 		data.distance = qr_distance;
 		data.angle = qr_angle;
-		data.x = x_ab + rel_x;
-		data.y = y_ab + rel_y;
+		data.x = rel_x;
+		data.y = rel_y;
 		data.id = det->id;
 
 		april_tag_detection_destroy(det);
@@ -233,14 +240,14 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg)
 		y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
-		x_ab = x_d + rel_x;
-		y_ab = y_d + rel_y;
+		//x_ab = x_d + rel_x;
+		//y_ab = y_d + rel_y;
 
 		// put the data into the QR_Data struct
 		data.distance = qr_distance;
 		data.angle = qr_angle;
-		data.x = x_ab + rel_x;
-		data.y = y_ab + rel_y;
+		data.x = rel_x;
+		data.y = rel_y;
 		data.id = det->id;
 
 		april_tag_detection_destroy(det);

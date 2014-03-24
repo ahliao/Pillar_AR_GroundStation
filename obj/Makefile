@@ -16,5 +16,4 @@ $(PROG_DIR):
 	mkdir $(PROG_DIR)
 
 clean:
-	rm $(PROG_DIR)/$(PROG)
 	rm -rf $(OBJS)

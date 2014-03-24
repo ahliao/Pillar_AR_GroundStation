@@ -4,7 +4,7 @@
 // Created on: 3/2/2014
 
 // Pillar headers
-#include "keyboard_controller.h"
+#include "drone_control.h"
 #include "drone_init.h"
 
 // Video headers
@@ -42,10 +42,6 @@ extern "C" {
 // Timer Tests
 #include <ctime>
 
-// TODO: REMOVE
-// Include the OpenMP 
-#include "omp.h"
-
 // TODO: Consider using SDL for the UI
 
 // OpenCV headers
@@ -77,6 +73,11 @@ int main()
 {
 	//signal(SIGPIPE, SIG_IGN); // Prevents termination if socket is down
 
+	// Create the Drone Controller
+	cout << "Creating DroneController Object...\n";
+	DroneController m_controller = new DroneController();
+	m_controller.init_ports();
+
 	// Create the Video handler
 	cout << "Creating ARDrone2Video Object\n";
 	ARDrone2Video *m_video = new ARDrone2Video();
@@ -89,7 +90,6 @@ int main()
 	if (m_video->isStarted()) cout << "Successful in connecting to drone\n";
 
 	// Init any image processing 
-	// TODO: handle the bottom camera
 	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
 
 	// Init TagReader object
@@ -100,10 +100,6 @@ int main()
 	
 	// Init the Navdata and command sockets
 	init_ports();
-
-
-	char command[256];
-	int seq = 0;
 
 	int32_t one = 1;
 	cout << navdata_socket << endl;
@@ -117,24 +113,20 @@ int main()
 	for(;;) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(p);	// Store frame into the Mat
-		// Do image processing
 
 		// Timing test
 		timeval start, end;
 		gettimeofday(&start, NULL);
+		// Do image processing
 		m_tagreader.process_Mat(p, data);
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
 		cout << "Tag detect time: " << delta << " ms" << endl;
-
 		cout << "Tag ID: " << data.id << endl;
 		
 		// Handle control using video and navdata
-		if (drone_control()) break;
-
-		// Get navdata
-		//get_navdata(&navdata);
+		drone_control();
 
 		// Output navdata
 		if (navdata != 0) {
@@ -158,7 +150,7 @@ int main()
 	pthread_join(thread1, NULL);
 
 	// close the sockets
-	close_ports();
+	m_controller.close_ports();
 
 	// Halt the video handler
 	m_video->end();
