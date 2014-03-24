@@ -4,8 +4,7 @@
 // Created on: 3/2/2014
 
 // Pillar headers
-#include "drone_control.h"
-#include "drone_init.h"
+#include "drone_controller.h"
 
 // Video headers
 #include "Video/ardrone_video.h"
@@ -39,8 +38,8 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-// Timer Tests
-#include <ctime>
+// STD headers
+#include <vector>
 
 // TODO: Consider using SDL for the UI
 
@@ -48,25 +47,35 @@ extern "C" {
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 
-// NCurses API for the keyboard input
-#include <curses.h>
-
 // DEBUG libraries
 #include <iostream>
 
+// Timer Tests
+#include <ctime>
+
+// Multithreading with the C lib
 #include <pthread.h>
 
 using namespace std;
 using namespace cv;
+	
+// Create the mutex to sync shared data
+pthread_mutex_t mutex;
 
 navdata_t* navdata = 0;
 bool running = true;
 
-void* test(void *)
+DroneController m_controller;
+
+// Thread to handle retrieving the navdata
+void* get_navdata(void *)
 {
 	while (running) {
-		get_navdata(&navdata);
+		pthread_mutex_lock(&mutex);
+		m_controller.get_navdata(&navdata);
+		pthread_mutex_unlock(&mutex);
 	}
+	pthread_exit((void*) 0);
 }
 
 int main()
@@ -75,19 +84,18 @@ int main()
 
 	// Create the Drone Controller
 	cout << "Creating DroneController Object...\n";
-	DroneController m_controller = new DroneController();
 	m_controller.init_ports();
 
 	// Create the Video handler
 	cout << "Creating ARDrone2Video Object\n";
-	ARDrone2Video *m_video = new ARDrone2Video();
+	ARDrone2Video m_video;
 	Address video_address("192.168.1.1", 5555);	// Address to the drone's video
 	// Connect the handler to the drone
-	m_video->start(video_address);
+	m_video.start(video_address);
 
 	// Check if video is connected
 	// If not, continue program without video
-	if (m_video->isStarted()) cout << "Successful in connecting to drone\n";
+	if (m_video.isStarted()) cout << "Successful in connecting to drone\n";
 
 	// Init any image processing 
 	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
@@ -96,37 +104,38 @@ int main()
 	TagReader m_tagreader;
 	cout << "Created TagReader\n";
 	// Init TagData
-	TagData data;
-	
-	// Init the Navdata and command sockets
-	init_ports();
+	vector<TagData> tagdata;
 
-	int32_t one = 1;
-	cout << navdata_socket << endl;
-	// set unicast mode on
-	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
-	// Handle image processing here
+	// Create the mutex to sync shared data
+	pthread_mutex_init(&mutex, NULL);
 
+	// Create the thread to retreive navdata
 	pthread_t thread1;
-	pthread_create(&thread1, NULL, &test, NULL);
+	pthread_create(&thread1, NULL, &get_navdata, NULL);
+
+	// TODO: make the control (or video) into another thread
 
 	for(;;) {
-		m_video->fetch();			// Decode the frame
-		m_video->latestImage(p);	// Store frame into the Mat
+		m_video.fetch();			// Decode the frame
+		m_video.latestImage(p);	// Store frame into the Mat
 
 		// Timing test
 		timeval start, end;
 		gettimeofday(&start, NULL);
+		
 		// Do image processing
-		m_tagreader.process_Mat(p, data);
+		m_tagreader.process_Mat(p, tagdata);
+
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
 		cout << "Tag detect time: " << delta << " ms" << endl;
-		cout << "Tag ID: " << data.id << endl;
+
+		for (vector<TagData>::iterator it = tagdata.begin(); it != tagdata.end(); ++it)
+			cout << "Tag ID: " << it->id << endl;
 		
-		// Handle control using video and navdata
-		drone_control();
+		// Handle control using tagdata and navdata
+		m_controller.control_loop(navdata, tagdata);
 
 		// Output navdata
 		if (navdata != 0) {
@@ -143,18 +152,19 @@ int main()
 
 		// show the frame
 		// TODO: Probably switch to SDL or other
-		imshow("Camera", p);
+		if(p.size().width > 0 && p.size().height > 0) imshow("Camera", p);
+		else cerr << "ERROR: Mat is not valid\n";
 		if (waitKey(1) == 27) break;
 	}
 	running = false;
 	pthread_join(thread1, NULL);
+	pthread_mutex_destroy(&mutex);
 
 	// close the sockets
 	m_controller.close_ports();
 
 	// Halt the video handler
-	m_video->end();
-	delete m_video;
+	m_video.end();
 
 	return 0;
 }

@@ -10,8 +10,6 @@
 DroneController::DroneController()
 {
 	init_ports();
-	// Set navdata to unicast
-	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
 	// Config the drone
 	default_config();
 }
@@ -58,6 +56,10 @@ int DroneController::init_ports()
 	}
 	else std::cout << "Successfully bound navdata_socket\n";
 
+	int32_t one = 1;
+	// set unicast mode on
+	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
+
 	return 0;	// return zero if nothing went wrong
 }
 
@@ -87,6 +89,42 @@ int DroneController::get_navdata(navdata_t ** data)
 //// Control Functions ////
 ///////////////////////////
 
+//////////////////////////
+// Control Loop //////////
+//////////////////////////
+
+void DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
+{
+	if (navdata == 0) {
+		std::cerr << "ERROR: Navdata is not valid.\n";
+		return;
+	}
+
+	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
+
+	// Take off if currently landed
+	if (nav_demo->ctrl_state == Landed) {
+		control_led(1, 2.0, 2);
+		control_ftrim();
+		control_basic(TAKEOFF);
+		gettimeofday(&takeoff_time, NULL);
+	}
+
+	// Land if flight time is over 10 seconds
+	gettimeofday(&curr_time, NULL);
+	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
+	if (delta <= 10) {
+		control_led(2, 2.0, 2);
+		control_basic(LAND);
+	}
+
+	control_move(false, 0, 0, 0, 0);
+}
+
+///////////////////////////
+///// End Control Loop ////
+///////////////////////////
+
 // Basic takeoff, land, and emergency commands
 void DroneController::control_basic(ControlBasic cmd)
 {
@@ -105,7 +143,7 @@ void DroneController::control_basic(ControlBasic cmd)
 }
 
 // Translate and rotate the drone
-void DroneController::control_move(const bool &enable, const float &roll, 
+void DroneController::control_move(const bool enable, const float &roll, 
 		const float &pitch, const float &vx, const float &rotspeed)
 {
 	sprintf(command, "AT*PCMD=%d,%d,%d,%d,%d,%d\r", seq, enable,
@@ -125,6 +163,21 @@ void DroneController::control_move_mag(bool enable, float roll, float pitch,
 			IEEE754toInt(roll), IEEE754toInt(pitch), IEEE754toInt(vx),
 			IEEE754toInt(rotspeed), IEEE754toInt(magpsi), 
 			IEEE754toInt(magpsiaccur));
+	send_drone_command(command);
+}
+
+// Tell the drone it is horizontal
+void DroneController::control_ftrim()
+{
+	sprintf(command, "AT*FTRIM=%d\r", seq);
+	send_drone_command(command);
+}
+
+// Drone LED Animation
+void DroneController::control_led(const uint8_t led, const float &freq, const uint8_t dur)
+{
+	sprintf(command, "AT*CONFIG=%d,\"leds:leds_anim\",\"%d,%d,%d\"\r", 
+			seq, led, IEEE754toInt(freq), dur);
 	send_drone_command(command);
 }
 

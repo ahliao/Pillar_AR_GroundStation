@@ -15,9 +15,13 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <vector>
+#include <ctime>
 
 // Headers for the navdata structs
 #include "navdata_common.h"
+
+#include "Video/tag_reader.h"
 
 // Macros for connecting to the drone
 #define NAVDATA_PORT	5554
@@ -61,11 +65,14 @@ class DroneController
 		//// Control Functions ////
 		///////////////////////////
 
+		// Control Loop
+		void control_loop(const navdata_t *const data, const std::vector<TagData> &tagdata);
+
 		// Basic takeoff, land, and emergency commands
 		void control_basic(ControlBasic cmd);
 
 		// Translate and rotate the drone
-		void control_move(const bool &enable, const float &roll, 
+		void control_move(const bool enable, const float &roll, 
 				const float &pitch, const float &vx, const float &rotspeed);
 
 		// Translate and rotate the drone 
@@ -74,6 +81,12 @@ class DroneController
 		// NEEDS TO BE TESTED
 		void control_move_mag(bool enable, float roll, float pitch, 
 				float vx, float rotspeed, float magpsi, float magpsiaccur);
+
+		// Tell the drone it is horizontal
+		void control_ftrim();
+
+		// Drone LED Animation
+		void control_led(const uint8_t led, const float &freq, const uint8_t dur);
 
 		// REQUIRES: The drone and computer are connected and on
 		// EFFECTS:	 sends AT commands to set default configs 
@@ -132,6 +145,9 @@ class DroneController
 
 		// Holds the navdata
 		char msg[2048];	// navdata message
+
+		// The flight time
+		timeval takeoff_time, curr_time;
 };
 
 #endif // DRONE_CONTROLLER_H

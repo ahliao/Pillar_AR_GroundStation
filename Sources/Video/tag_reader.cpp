@@ -54,14 +54,13 @@ TagReader::~TagReader()
 // REQUIRES: allocated Mat and TagData
 // MODIFIES: data
 // EFFECTS:  Finds April Tags and stores info in data
-void TagReader::process_Mat(const cv::Mat& img, TagData &data)
+void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 {
-	// put the data into the QR_Data struct
-	data.distance = -1;
-	data.angle = -1;
-	data.x = -1;
-	data.y = -1;
-	data.id = -1;
+	// Clear the vector
+	data.clear();
+
+	// TagData struct
+	TagData tag;
 
 	// Form an image_u8 with the image
 	image_u8_t *im = image_u8_create_from_rgb3(img.cols, img.rows, 
@@ -70,6 +69,13 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 
 	int i = 0;
 	for (i = 0; i < zarray_size(detections); ++i) {
+		// Init the default values of the TagData
+		tag.distance = -1;
+		tag.angle = -1;
+		tag.x = -1;
+		tag.y = -1;
+		tag.id = -1;
+
 		april_tag_detection_t *det;
 		zarray_get(detections, i, &det);
 
@@ -141,11 +147,12 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 		//y_ab = y_d + rel_y;
 
 		// put the data into the QR_Data struct
-		data.distance = qr_distance;
-		data.angle = qr_angle;
-		data.x = rel_x;
-		data.y = rel_y;
-		data.id = det->id;
+		tag.distance = qr_distance;
+		tag.angle = qr_angle;
+		tag.x = rel_x;
+		tag.y = rel_y;
+		tag.id = det->id;
+		data.push_back(tag);
 
 		april_tag_detection_destroy(det);
 	}
@@ -156,8 +163,14 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data)
 // MODIFIES: data, outimg
 // EFFECTS:  Finds April Tags and stores info in data
 //			 draws data and lines onto outimg
-void TagReader::process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg)
+void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::Mat& outimg)
 {
+	// Clear the vector
+	data.clear();
+
+	// TagData struct
+	TagData tag;
+
 	// Form an image_u8 with the image
 	image_u8_t *im = image_u8_create_from_rgb3(img.cols, img.rows, 
 		(uint8_t *)img.data, img.step);
@@ -165,6 +178,13 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg)
 
 	int i = 0;
 	for (i = 0; i < zarray_size(detections); ++i) {
+		// Init the default values of the TagData
+		tag.distance = -1;
+		tag.angle = -1;
+		tag.x = -1;
+		tag.y = -1;
+		tag.id = -1;
+
 		april_tag_detection_t *det;
 		zarray_get(detections, i, &det);
 
@@ -244,11 +264,12 @@ void TagReader::process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg)
 		//y_ab = y_d + rel_y;
 
 		// put the data into the QR_Data struct
-		data.distance = qr_distance;
-		data.angle = qr_angle;
-		data.x = rel_x;
-		data.y = rel_y;
-		data.id = det->id;
+		tag.distance = qr_distance;
+		tag.angle = qr_angle;
+		tag.x = rel_x;
+		tag.y = rel_y;
+		tag.id = det->id;
+		data.push_back(tag);
 
 		april_tag_detection_destroy(det);
 	}

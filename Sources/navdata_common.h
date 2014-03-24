@@ -1,5 +1,11 @@
 #ifndef NAVDATA_COMMON_H
 #define NAVDATA_COMMON_H
+enum State
+{
+	Disconnected = 0,
+	Landed,
+	Flying
+};
 
 struct navdata_option_t
 {

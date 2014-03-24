@@ -7,6 +7,9 @@
 #ifndef TAG_READER_H
 #define TAG_READER_H
 
+// STD headers
+#include <vector>
+
 // OpenCV headers
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
@@ -38,13 +41,13 @@ class TagReader
 		// REQUIRES: allocated Mat and TagData
 		// MODIFIES: data
 		// EFFECTS:  Finds April Tags and stores info in data
-		void process_Mat(const cv::Mat& img, TagData &data);
+		void process_Mat(const cv::Mat& img, std::vector<TagData> &data);
 
 		// REQUIRES: allocated Mats and TagData
 		// MODIFIES: data, outimg
 		// EFFECTS:  Finds April Tags and stores info in data
 		//			 draws data and lines onto outimg
-		void process_Mat(const cv::Mat& img, TagData &data, cv::Mat& outimg);
+		void process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::Mat& outimg);
 
 	private:
 		// The width and height of the frame
