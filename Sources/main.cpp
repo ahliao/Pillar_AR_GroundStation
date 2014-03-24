@@ -85,6 +85,7 @@ int main()
 	// Create the Drone Controller
 	cout << "Creating DroneController Object...\n";
 	m_controller.init_ports();
+	if (!m_controller.is_connected()) return 1;
 
 	// Create the Video handler
 	cout << "Creating ARDrone2Video Object\n";
@@ -96,6 +97,7 @@ int main()
 	// Check if video is connected
 	// If not, continue program without video
 	if (m_video.isStarted()) cout << "Successful in connecting to drone\n";
+	else { cerr << "ERROR: Could not connect to drone\n"; return 1; }
 
 	// Init any image processing 
 	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
@@ -135,7 +137,7 @@ int main()
 			cout << "Tag ID: " << it->id << endl;
 		
 		// Handle control using tagdata and navdata
-		m_controller.control_loop(navdata, tagdata);
+		if (m_controller.control_loop(navdata, tagdata)) break;
 
 		// Output navdata
 		if (navdata != 0) {
@@ -153,7 +155,10 @@ int main()
 		// show the frame
 		// TODO: Probably switch to SDL or other
 		if(p.size().width > 0 && p.size().height > 0) imshow("Camera", p);
-		else cerr << "ERROR: Mat is not valid\n";
+		else {
+			cerr << "ERROR: Mat is not valid\n";
+			break;
+		}
 		if (waitKey(1) == 27) break;
 	}
 	running = false;

@@ -51,7 +51,10 @@ class DroneController
 		// REQUIRES: the global sockaddr_in structs, at_socket and navdata_socket
 		// MODIFIES: the required stuff
 		// EFFECTS:  Initializes the communication between the computer and drone
-		int init_ports();
+		bool init_ports();
+
+		// EFFECTS:  returns true if sockets are connected, else false
+		bool is_connected();
 
 		// EFFECTS: closes at_socket and navdata_socket
 		void close_ports();
@@ -66,7 +69,7 @@ class DroneController
 		///////////////////////////
 
 		// Control Loop
-		void control_loop(const navdata_t *const data, const std::vector<TagData> &tagdata);
+		int control_loop(const navdata_t *const data, const std::vector<TagData> &tagdata);
 
 		// Basic takeoff, land, and emergency commands
 		void control_basic(ControlBasic cmd);
@@ -148,6 +151,9 @@ class DroneController
 
 		// The flight time
 		timeval takeoff_time, curr_time;
+
+		// bool if currently connected to the drone
+		bool m_connected;
 };
 
 #endif // DRONE_CONTROLLER_H

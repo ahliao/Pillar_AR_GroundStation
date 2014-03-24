@@ -9,7 +9,7 @@
 // Constructor
 DroneController::DroneController()
 {
-	init_ports();
+	m_connected = init_ports();
 	// Config the drone
 	default_config();
 }
@@ -23,16 +23,16 @@ DroneController::~DroneController()
 // REQUIRES: the global sockaddr_in structs, at_socket and navdata_socket
 // MODIFIES: the required stuff
 // EFFECTS:  Initializes the communication between the computer and drone
-int DroneController::init_ports()
+bool DroneController::init_ports()
 {
 	if ((at_socket = socket (AF_INET, SOCK_DGRAM, 0)) < 0) {
 		std::cerr << "Error creating at_socket\n";
-		return 1;
+		return false;
 	}
 
 	if ((navdata_socket = socket (AF_INET, SOCK_DGRAM, 0)) < 0) {
 		std::cerr << "Error creating navdata_socket\n";
-		return 1;
+		return false;
 	}
 
 	// for recvfrom
@@ -52,7 +52,7 @@ int DroneController::init_ports()
 
 	if (bind(navdata_socket, (struct sockaddr *) &pc_addr, sizeof(pc_addr)) < 0) {
 		std::cerr << "Error binding navdata_socket to pc_addr\n";
-		return 1;
+		return false;
 	}
 	else std::cout << "Successfully bound navdata_socket\n";
 
@@ -60,7 +60,13 @@ int DroneController::init_ports()
 	// set unicast mode on
 	sendto(navdata_socket, &one, 4, 0, (sockaddr *) &drone_nav, sizeof(drone_nav));
 
-	return 0;	// return zero if nothing went wrong
+	return true;	// return true if nothing went wrong
+}
+
+// EFFECTS:  returns true if sockets are connected, else false
+bool DroneController::is_connected()
+{
+	return m_connected;
 }
 
 // EFFECTS: closes at_socket and navdata_socket
@@ -93,11 +99,11 @@ int DroneController::get_navdata(navdata_t ** data)
 // Control Loop //////////
 //////////////////////////
 
-void DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
+int DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
 {
 	if (navdata == 0) {
 		std::cerr << "ERROR: Navdata is not valid.\n";
-		return;
+		return 1;
 	}
 
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
@@ -113,12 +119,14 @@ void DroneController::control_loop(const navdata_t *const navdata, const std::ve
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);
 	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
-	if (delta <= 10) {
+	if (delta >= 10) {
 		control_led(2, 2.0, 2);
 		control_basic(LAND);
 	}
 
 	control_move(false, 0, 0, 0, 0);
+
+	return 0;
 }
 
 ///////////////////////////
