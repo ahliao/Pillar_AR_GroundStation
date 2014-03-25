@@ -75,8 +75,8 @@ class DroneController
 		void control_basic(ControlBasic cmd);
 
 		// Translate and rotate the drone
-		void control_move(const bool enable, const float &roll, 
-				const float &pitch, const float &vx, const float &rotspeed);
+		void control_move(const bool enable, const float roll, 
+				const float pitch, const float vx, const float rotspeed);
 
 		// Translate and rotate the drone 
 		// Uses magnetometer for rotation
@@ -89,7 +89,7 @@ class DroneController
 		void control_ftrim();
 
 		// Drone LED Animation
-		void control_led(const uint8_t led, const float &freq, const uint8_t dur);
+		void control_led(const uint8_t led, const float freq, const uint8_t dur);
 
 		// REQUIRES: The drone and computer are connected and on
 		// EFFECTS:	 sends AT commands to set default configs 
@@ -126,10 +126,10 @@ class DroneController
 	private:
 		// REQUIRES: a is a valid float
 		// EFFECTS:  the 32-bit integer form of a
-		int IEEE754toInt(const float &a);
+		int IEEE754toInt(const float a);
 
 		// Send an AT command to the drone
-		void send_drone_command(char command[]);
+		void send_drone_command(const char command[]);
 
 		//// Member variables
 
@@ -151,6 +151,10 @@ class DroneController
 
 		// The flight time
 		timeval takeoff_time, curr_time;
+		bool test;
+
+		// The center of the camera frame
+		int frame_mid_x, frame_mid_y;
 
 		// bool if currently connected to the drone
 		bool m_connected;

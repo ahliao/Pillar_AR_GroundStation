@@ -7,11 +7,12 @@
 #include "drone_controller.h"
 
 // Constructor
-DroneController::DroneController()
+DroneController::DroneController() : frame_mid_x(320), frame_mid_y(180)
 {
 	m_connected = init_ports();
 	// Config the drone
 	default_config();
+	test = false;
 }
 
 // Destructor
@@ -109,19 +110,23 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
 
 	// Take off if currently landed
-	if (nav_demo->ctrl_state == Landed) {
+	if (!test) {//nav_demo->ctrl_state == Landed) {
+		std::cout << nav_demo->ctrl_state << std::endl;
+		test = true;
 		control_led(1, 2.0, 2);
 		control_ftrim();
-		control_basic(TAKEOFF);
+		//control_basic(TAKEOFF);
 		gettimeofday(&takeoff_time, NULL);
 	}
+		std::cout << "Flying " << nav_demo->pitch << std::endl;
 
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);
 	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
-	if (delta >= 10) {
+	if (delta >= 5) {
+		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
-		control_basic(LAND);
+		//control_basic(LAND);
 	}
 
 	control_move(false, 0, 0, 0, 0);
@@ -138,21 +143,23 @@ void DroneController::control_basic(ControlBasic cmd)
 {
 	uint32_t m = (1 << 18) | (1 << 20) | (1 << 22) | (1 << 24) | (1 << 28);
 	if (cmd == TAKEOFF) {
+		//m =290718208;
 		m |= (1 << 9);
 		m &= ~(1 << 8);
 	}
 	else if (cmd == LAND) {
+		//m = 290717696;
 		m &= ~(1 << 9);
 		m &= ~(1 << 8);
 	}
 	else if (cmd == EMERGENCY) m |= (1 << 8);
-	sprintf(command, "AT*REF=%d,%d\r", seq, cmd);
+	sprintf(command, "AT*REF=%d,%d\r", seq, m);
 	send_drone_command(command);
 }
 
 // Translate and rotate the drone
-void DroneController::control_move(const bool enable, const float &roll, 
-		const float &pitch, const float &vx, const float &rotspeed)
+void DroneController::control_move(const bool enable, const float roll, 
+		const float pitch, const float vx, const float rotspeed)
 {
 	sprintf(command, "AT*PCMD=%d,%d,%d,%d,%d,%d\r", seq, enable,
 			IEEE754toInt(roll), IEEE754toInt(pitch), IEEE754toInt(vx),
@@ -182,7 +189,7 @@ void DroneController::control_ftrim()
 }
 
 // Drone LED Animation
-void DroneController::control_led(const uint8_t led, const float &freq, const uint8_t dur)
+void DroneController::control_led(const uint8_t led, const float freq, const uint8_t dur)
 {
 	sprintf(command, "AT*CONFIG=%d,\"leds:leds_anim\",\"%d,%d,%d\"\r", 
 			seq, led, IEEE754toInt(freq), dur);
@@ -269,7 +276,7 @@ void DroneController::config_vyaw_max(uint32_t max)
 
 // REQUIRES: a is a valid float
 // EFFECTS:  the 32-bit integer form of a
-int DroneController::IEEE754toInt(const float &a)
+int DroneController::IEEE754toInt(const float a)
 {
 	union {		// bad practice, but it works
 		float f;
@@ -280,7 +287,7 @@ int DroneController::IEEE754toInt(const float &a)
 }
 
 // Send an AT command to the drone
-void DroneController::send_drone_command(char command[])
+void DroneController::send_drone_command(const char command[])
 {
 	// TODO: make sure sockets are open
 	if (at_socket < 0) {

@@ -116,7 +116,6 @@ int main()
 	pthread_create(&thread1, NULL, &get_navdata, NULL);
 
 	// TODO: make the control (or video) into another thread
-
 	for(;;) {
 		m_video.fetch();			// Decode the frame
 		m_video.latestImage(p);	// Store frame into the Mat
@@ -131,10 +130,10 @@ int main()
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
-		cout << "Tag detect time: " << delta << " ms" << endl;
+		//cout << "Tag detect time: " << delta << " ms" << endl;
 
-		for (vector<TagData>::iterator it = tagdata.begin(); it != tagdata.end(); ++it)
-			cout << "Tag ID: " << it->id << endl;
+		//for (vector<TagData>::iterator it = tagdata.begin(); it != tagdata.end(); ++it)
+		//	cout << "Tag ID: " << it->id << endl;
 		
 		// Handle control using tagdata and navdata
 		if (m_controller.control_loop(navdata, tagdata)) break;
@@ -143,6 +142,7 @@ int main()
 		if (navdata != 0) {
 		cout << "header " << navdata->header << endl
 			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
+			 << "State " << ((navdata_demo_t*)(navdata->options))->ctrl_state << endl
 			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
 			 << "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
 			 << "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
@@ -159,7 +159,16 @@ int main()
 			cerr << "ERROR: Mat is not valid\n";
 			break;
 		}
-		if (waitKey(1) == 27) break;
+		char input = waitKey(1);
+		if (input == 27) break;
+		else if (input == 'p') {
+			char filename[64];
+			//sprintf(filename, "image%d.jpg", count);
+			sprintf(filename, "image.jpg");
+			cout << "Took a picture";
+			imwrite(filename, p);
+			//count++;
+		}
 	}
 	running = false;
 	pthread_join(thread1, NULL);
