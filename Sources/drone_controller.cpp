@@ -109,16 +109,26 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
 
+	if(tagdata.size() > 0) {
+		TagData tag = tagdata.at(0);
+	std::cout << "Tag ID: " << tag.id << std::endl <<
+		"Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
+	   << ")" << std::endl;
+	}
+
 	// Take off if currently landed
 	if (!flying) {//nav_demo->ctrl_state == Landed) {
 		std::cout << nav_demo->ctrl_state << std::endl;
+		default_config();
+		reset_comm_watchdog();
+		control_ftrim();
 		flying = true;
 		control_led(1, 2.0, 2);
-		control_basic(TAKEOFF);	// Takeoff command
+		//control_basic(TAKEOFF);	// Takeoff command
 		gettimeofday(&takeoff_time, NULL);
 	}
 
-	else if (flying && tagdata.size() > 0) {
+	/*else if (flying && tagdata.size() > 0) {
 		TagData tag = tagdata.at(0);
 		std::cout << "Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
 		   << ")" << std::endl;
@@ -137,8 +147,12 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		// Gain Kp
 		int Kp = 1;
 
-		int error_x = goal_x - curr_x;
-		int error_y = goal_y - curr_y;
+		// rel_x and rel_y are currently the difference (relative pos)
+
+		//int error_x = goal_x - curr_x;
+		//int error_y = goal_y - curr_y;
+		int error_x = rel_x;
+		int error_y = rel_y;
 		int error_yaw = tag.angle;
 
 		float angle_x = (Kp * error_x) / 2048;
@@ -155,7 +169,7 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 
 		control_move(true, angle_x, angle_y, 0, ang_vel);
 
-	} else {
+	} */else {
 		control_move(false, 0, 0, 0, 0);
 	}
 
@@ -165,7 +179,7 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	if (delta >= 10) {
 		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
-		control_basic(LAND);
+		//control_basic(LAND);
 		//flying = false;
 	}
 
@@ -249,7 +263,7 @@ void DroneController::reset_comm_watchdog()
 void DroneController::default_config()
 {
 	// set to reduced navdata
-	config_navdata_demo(true);
+	config_navdata_demo(false);
 	config_options(NAVDATA_ALL);
 	config_outdoor(false);
 	config_outdoor_shell(false);
@@ -273,7 +287,7 @@ void DroneController::config_navdata_demo(bool b)
 void DroneController::config_options(NavdataOptions options)
 {
 	// TODO: choose more navdata options
-	sprintf(command, "AT*CONFIG=%d,\"general:navdata_options\",\"13\"\r", seq);
+	sprintf(command, "AT*CONFIG=%d,\"general:navdata_options\",\"105971713\"\r", seq);
 	send_drone_command(command);
 }
 

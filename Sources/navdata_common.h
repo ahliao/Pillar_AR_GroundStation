@@ -27,7 +27,7 @@ struct navdata_t {
 
 	// Sequence number, incremented for each sent packet
 	uint32_t sequence;
-	uint32_t vision_defined;
+	bool vision_defined;
 
 	navdata_option_t options[];
 } __attribute__((packed));
@@ -54,6 +54,9 @@ struct navdata_vec3_t
 
 struct navdata_demo_t
 {
+	uint16_t    tag;					  /*!< Navdata block ('option') identifier */
+	uint16_t    size;					  /*!< set this to the size of this structure */
+
 	// Flying state (landed, flying, hovering, etc.) defined in CTRL_STATES enum.
 	uint32_t ctrl_state;
 
@@ -73,7 +76,10 @@ struct navdata_demo_t
 	int32_t altitude;
 
 	// UAV's estimated linear velocity
-	navdata_vec3_t velocity;
+	//navdata_vec3_t velocity;
+	float   vx;                     /*!< UAV's estimated linear velocity */
+	float   vy;                     /*!< UAV's estimated linear velocity */
+	float   vz;                     /*!< UAV's estimated linear velocity */
 
 	uint32_t frameIndex;
 
@@ -115,6 +121,7 @@ struct navdata_raw_t
 	uint16_t echoSum;
         
 	int32_t altTemp;
+	int16_t   gradient;
 } __attribute__((packed));
 
 struct navdata_phys_t

@@ -86,8 +86,8 @@ void* get_video(void *)
 {
 	while (running) {
 		pthread_mutex_lock(&mutex);
-		m_video.fetch();			// Decode the frame
-		m_video.latestImage(p);	// Store frame into the Mat
+//		m_video.fetch();			// Decode the frame
+//		m_video.latestImage(p);	// Store frame into the Mat
 		m_tagreader.process_Mat(p, tagdata);	// Image processing
 		pthread_mutex_unlock(&mutex);
 	}
@@ -128,8 +128,8 @@ int main()
 	// Create the thread to retreive navdata
 	pthread_t thread1;
 	pthread_create(&thread1, NULL, &get_navdata, NULL);
-	pthread_t thread2;
-	pthread_create(&thread2, NULL, &get_video, NULL);
+	//pthread_t thread2;
+	//pthread_create(&thread2, NULL, &get_video, NULL);
 
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
@@ -143,11 +143,15 @@ int main()
 		
 		// Do image processing
 	//	m_tagreader.process_Mat(p, tagdata);
+		m_video.fetch();			// Decode the frame
+		m_video.latestImage(p);	// Store frame into the Mat
+		m_tagreader.process_Mat(p, tagdata,p);	// Image processing
 
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
 		cout << "Tag detect time: " << delta << " ms" << endl;
+		//m_controller.get_navdata(&navdata);
 
 		// Handle control using tagdata and navdata
 		if (m_controller.control_loop(navdata, tagdata)) break;
@@ -158,12 +162,16 @@ int main()
 			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
 			 << "State " << ((navdata_demo_t*)(navdata->options))->ctrl_state << endl
 			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
-			 << "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
-			 << "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
-			 << "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
+			 //<< "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
+			 //<< "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
+			 //<< "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
 			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
 			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
 			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
+		if (!navdata) cout << "STATE is Landed\n";
+		else if (navdata->ardrone_state & (1U << 0))
+			cout << "State is flying\n";
+		else cout << "State is unknown\n";
 		}
 
 		// show the frame
@@ -184,10 +192,13 @@ int main()
 			//count++;
 		}
 	}
+	m_controller.control_basic(LAND);
+
 	cout << "Halting threads\n";
 	running = false;
 	pthread_join(thread1, NULL);
-	pthread_join(thread2, NULL);
+	cout << "Test\n";
+	//pthread_join(thread2, NULL);
 	pthread_mutex_destroy(&mutex);
 
 	// close the sockets

@@ -36,10 +36,10 @@ TagReader::TagReader()
 	// Instantiate a tag family and pass to detector
 	tf = tag36h11_create();
 	td = april_tag_detector_create(tf);
-	td->nthreads = 8;
+	td->nthreads = 4;
 	td->seg_sigma = 0.8;
 	td->min_mag = 0;
-	td->seg_decimate = 2; // stops the lag spikes
+	td->seg_decimate = 3; // stops the lag spikes
 	// Set to 1 for better detection but slower rate
 }
 
@@ -148,8 +148,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		y_d = dis2Mid * cos(theta2);*/
 
 		// Convert the position to meters
-		x_d = x_d * distance_M + distance_B;
-		y_d = y_d * distance_M + distance_B;
+		//x_d = x_d * distance_M + distance_B;
+		//y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
 		//x_ab = x_d + rel_x;
@@ -285,8 +285,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		line(outimg, ptb1, ptb2, cv::Scalar(0, 200, 1), 2);
 
 		// Convert the position to meters
-		x_d = x_d * distance_M + distance_B;
-		y_d = y_d * distance_M + distance_B;
+		//x_d = x_d * distance_M + distance_B;
+		//y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
 		//x_ab = x_d + rel_x;
