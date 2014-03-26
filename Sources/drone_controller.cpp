@@ -12,7 +12,7 @@ DroneController::DroneController() : frame_mid_x(320), frame_mid_y(180)
 	m_connected = init_ports();
 	// Config the drone
 	default_config();
-	test = false;
+	flying = false;
 }
 
 // Destructor
@@ -110,26 +110,53 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
 
 	// Take off if currently landed
-	if (!test) {//nav_demo->ctrl_state == Landed) {
+	if (!flying) {//nav_demo->ctrl_state == Landed) {
 		std::cout << nav_demo->ctrl_state << std::endl;
-		test = true;
+		flying = true;
 		control_led(1, 2.0, 2);
-		control_ftrim();
 		//control_basic(TAKEOFF);
 		gettimeofday(&takeoff_time, NULL);
 	}
-		std::cout << "Flying " << nav_demo->pitch << std::endl;
+
+	else if (tagdata.size() > 0) {
+		TagData tag = tagdata.at(0);
+		std::cout << "Tag Pos: (" << tag.x << ", " << tag.y 
+		   << ")" << std::endl;
+
+		int goal_x = 0;
+		int goal_y = 0;
+		float pixel_scale = 17 / tag.side_length; // cm per px
+		int curr_x = 0;
+		int curr_y = 0;
+
+		curr_x = (tag.id % GRID_COL)*GRID_STEP + 
+			(frame_mid_x - tag.x)*pixel_scale;
+		curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
+			(frame_mid_y - tag.y)*pixel_scale;
+
+		// Gain Kp
+		int Kp = 1;
+
+		int error_x = goal_x - curr_x;
+		int error_y = goal_y - curr_y;
+
+		int input = 0;
+		int output = 0;
+
+	} else {
+		control_move(false, 0, 0, 0, 0);
+	}
 
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);
 	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
-	if (delta >= 5) {
+	if (delta >= 10) {
 		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
 		//control_basic(LAND);
 	}
 
-	control_move(false, 0, 0, 0, 0);
+	reset_comm_watchdog();
 
 	return 0;
 }
@@ -143,12 +170,13 @@ void DroneController::control_basic(ControlBasic cmd)
 {
 	uint32_t m = (1 << 18) | (1 << 20) | (1 << 22) | (1 << 24) | (1 << 28);
 	if (cmd == TAKEOFF) {
-		//m =290718208;
+		reset_comm_watchdog();
+		control_ftrim();
 		m |= (1 << 9);
 		m &= ~(1 << 8);
 	}
 	else if (cmd == LAND) {
-		//m = 290717696;
+		control_move(false, 0, 0, 0, 0);
 		m &= ~(1 << 9);
 		m &= ~(1 << 8);
 	}
@@ -193,6 +221,13 @@ void DroneController::control_led(const uint8_t led, const float freq, const uin
 {
 	sprintf(command, "AT*CONFIG=%d,\"leds:leds_anim\",\"%d,%d,%d\"\r", 
 			seq, led, IEEE754toInt(freq), dur);
+	send_drone_command(command);
+}
+
+// Reset the communication watchdog
+void DroneController::reset_comm_watchdog()
+{
+	sprintf(command, "AT*COMWDG=%d\r",seq); // reset comm watchdog
 	send_drone_command(command);
 }
 

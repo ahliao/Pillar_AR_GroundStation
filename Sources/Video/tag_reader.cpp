@@ -101,8 +101,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		qr_length = sqrt((vp[0].x - vp[1].x) * (vp[0].x - vp[1].x) +
 				(vp[0].y - vp[1].y) * (vp[0].y - vp[1].y));
 		qr_distance = qr_length * distance_M + distance_B;
-		printf("Length: %i\n", qr_length);
-		printf("Distance: %f\n", qr_distance);
+		//printf("Length: %i\n", qr_length);
+		//printf("Distance: %f\n", qr_distance);
 
 		// Get the angle of the square/rectangle
 		qr_angle = r.angle;
@@ -152,8 +152,10 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		tag.x = rel_x;
 		tag.y = rel_y;
 		tag.id = det->id;
+		tag.side_length = qr_length;
 		data.push_back(tag);
 
+		image_u8_destroy(im);
 		april_tag_detection_destroy(det);
 	}
 	zarray_destroy(detections);

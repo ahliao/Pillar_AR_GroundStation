@@ -41,6 +41,10 @@ enum ControlBasic {
 	EMERGENCY
 };
 
+const static int GRID_COL = 1;
+const static int GRID_ROW = 1;
+const static int GRID_STEP = 10;
+
 class DroneController
 {
 	public:
@@ -90,6 +94,9 @@ class DroneController
 
 		// Drone LED Animation
 		void control_led(const uint8_t led, const float freq, const uint8_t dur);
+
+		// Reset the communication watchdog
+		void reset_comm_watchdog();
 
 		// REQUIRES: The drone and computer are connected and on
 		// EFFECTS:	 sends AT commands to set default configs 
@@ -151,7 +158,7 @@ class DroneController
 
 		// The flight time
 		timeval takeoff_time, curr_time;
-		bool test;
+		bool flying;
 
 		// The center of the camera frame
 		int frame_mid_x, frame_mid_y;

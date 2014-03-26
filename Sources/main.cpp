@@ -63,9 +63,13 @@ using namespace cv;
 pthread_mutex_t mutex;
 
 navdata_t* navdata = 0;
-bool running = true;
+volatile bool running = true;
 
 DroneController m_controller;
+Mat p;	// Mat to store video frame  (Takes up a ton of memory)
+ARDrone2Video m_video;
+TagReader m_tagreader;
+vector<TagData> tagdata;
 
 // Thread to handle retrieving the navdata
 void* get_navdata(void *)
@@ -73,6 +77,18 @@ void* get_navdata(void *)
 	while (running) {
 		pthread_mutex_lock(&mutex);
 		m_controller.get_navdata(&navdata);
+		pthread_mutex_unlock(&mutex);
+	}
+	pthread_exit((void*) 0);
+}
+
+void* get_video(void *)
+{
+	while (running) {
+		pthread_mutex_lock(&mutex);
+		m_video.fetch();			// Decode the frame
+		m_video.latestImage(p);	// Store frame into the Mat
+		m_tagreader.process_Mat(p, tagdata);
 		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit((void*) 0);
@@ -89,7 +105,6 @@ int main()
 
 	// Create the Video handler
 	cout << "Creating ARDrone2Video Object\n";
-	ARDrone2Video m_video;
 	Address video_address("192.168.1.1", 5555);	// Address to the drone's video
 	// Connect the handler to the drone
 	m_video.start(video_address);
@@ -100,13 +115,12 @@ int main()
 	else { cerr << "ERROR: Could not connect to drone\n"; return 1; }
 
 	// Init any image processing 
-	Mat p = Mat(360, 640, CV_8UC3);	// Mat to store video frame
+	p = Mat(360, 640, CV_8UC3, Scalar(0,200,0));	// Mat to store video frame
 
 	// Init TagReader object
-	TagReader m_tagreader;
 	cout << "Created TagReader\n";
 	// Init TagData
-	vector<TagData> tagdata;
+	//vector<TagData> tagdata;
 
 	// Create the mutex to sync shared data
 	pthread_mutex_init(&mutex, NULL);
@@ -114,27 +128,27 @@ int main()
 	// Create the thread to retreive navdata
 	pthread_t thread1;
 	pthread_create(&thread1, NULL, &get_navdata, NULL);
+	pthread_t thread2;
+	pthread_create(&thread2, NULL, &get_video, NULL);
 
 	// TODO: make the control (or video) into another thread
+	// TODO: Found mem leak in zarray.c 23 in calloc
 	for(;;) {
-		m_video.fetch();			// Decode the frame
-		m_video.latestImage(p);	// Store frame into the Mat
+		//m_video.fetch();			// Decode the frame
+		//m_video.latestImage(p);	// Store frame into the Mat
 
 		// Timing test
 		timeval start, end;
 		gettimeofday(&start, NULL);
 		
 		// Do image processing
-		m_tagreader.process_Mat(p, tagdata);
+	//	m_tagreader.process_Mat(p, tagdata);
 
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
-		//cout << "Tag detect time: " << delta << " ms" << endl;
+		cout << "Tag detect time: " << delta << " ms" << endl;
 
-		//for (vector<TagData>::iterator it = tagdata.begin(); it != tagdata.end(); ++it)
-		//	cout << "Tag ID: " << it->id << endl;
-		
 		// Handle control using tagdata and navdata
 		if (m_controller.control_loop(navdata, tagdata)) break;
 
@@ -170,11 +184,14 @@ int main()
 			//count++;
 		}
 	}
+	cout << "Halting threads\n";
 	running = false;
 	pthread_join(thread1, NULL);
+	pthread_join(thread2, NULL);
 	pthread_mutex_destroy(&mutex);
 
 	// close the sockets
+	cout << "Closing ports\n";
 	m_controller.close_ports();
 
 	// Halt the video handler

@@ -9,6 +9,7 @@
 
 // STD headers
 #include <vector>
+#include <iostream>
 
 // OpenCV headers
 #include <opencv2/opencv.hpp>
@@ -29,6 +30,7 @@ struct TagData
 	double x;
 	double y;
 	int id;
+	int side_length;
 };
 
 class TagReader
