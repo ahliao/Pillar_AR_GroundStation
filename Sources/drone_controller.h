@@ -41,6 +41,11 @@ enum ControlBasic {
 	EMERGENCY
 };
 
+enum VideoChannel {
+	FRONT,
+	BOTTOM
+};
+
 const static int GRID_COL = 1;
 const static int GRID_ROW = 1;
 const static int GRID_STEP = 10;
@@ -129,6 +134,9 @@ class DroneController
 		void config_vyaw_max(uint32_t max);
 
 		/////////////////////////////////////////////////////////////
+
+		// Video config
+		void config_video_channel(VideoChannel channel);
 
 	private:
 		// REQUIRES: a is a valid float

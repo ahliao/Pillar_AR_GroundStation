@@ -72,8 +72,10 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		// Init the default values of the TagData
 		tag.distance = -1;
 		tag.angle = -1;
-		tag.x = -1;
-		tag.y = -1;
+		tag.rel_x = -1;
+		tag.rel_y = -1;
+		tag.img_x = -1;
+		tag.img_y = -1;
 		tag.id = -1;
 
 		april_tag_detection_t *det;
@@ -106,24 +108,27 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 
 		// Get the angle of the square/rectangle
 		qr_angle = r.angle;
-		if (vp[0].x > vp[1].x && vp[0].y > vp[3].y &&
-				vp[0].y > vp[2].y && vp[0].x < vp[3].x) qr_angle += 90;
+		if (vp[0].x < vp[1].x && vp[0].y < vp[3].y &&
+				vp[0].y < vp[2].y && vp[0].x > vp[3].x) qr_angle += 90;
 		else if (vp[0].x > vp[1].x && vp[0].y < vp[1].y &&
 				vp[0].y > vp[3].y && vp[0].x > vp[2].x) qr_angle += 180;
-		else if (vp[0].x < vp[1].x && vp[0].x > vp[3].x &&
-				vp[0].y < vp[2].y && vp[0].y < vp[3].y) qr_angle += 270;
+		else if (vp[2].x > vp[1].x && vp[0].x < vp[3].x &&
+				vp[0].y > vp[2].y && vp[2].y < vp[1].y) qr_angle += 270;
+		else if (vp[0].x < vp[2].x && vp[1].y < vp[3].y &&
+				vp[1].x > vp[0].x && vp[2].y < vp[3].y) qr_angle += 360;
+
 		else if (vp[0].x == vp[3].x && vp[0].y == vp[1].y &&
 				vp[0].x < vp[1].x && vp[0].y < vp[3].y) qr_angle = 0;
-		else if (vp[0].x == vp[1].x && vp[0].y == vp[3].y &&
-				vp[0].x < vp[3].x && vp[0].y > vp[1].y) qr_angle = 90;
+		else if (vp[0].x - 1 <= vp[1].x && vp[0].y - 1 <= vp[3].y &&
+				vp[0].x > vp[3].x && vp[0].y < vp[1].y) qr_angle = 90;
 		else if (vp[0].x == vp[3].x && vp[0].y == vp[1].y &&
 				vp[0].x > vp[1].x && vp[0].y > vp[3].y) qr_angle = 180;
-		else if (vp[0].x == vp[1].x && vp[0].y == vp[3].y &&
-				vp[0].x > vp[3].x && vp[0].y < vp[1].y) qr_angle = 270;
+		else if (vp[0].x <= vp[1].x && vp[0].y == vp[3].y &&
+				vp[0].x < vp[3].x && vp[0].y > vp[1].y) qr_angle = 270;
 
 		// Store the angle
 		qr_angle_deg = qr_angle;
-		qr_angle = qr_angle * 3.1415 / 180;
+		qr_angle = qr_angle * PI / 180;
 		cv::Point mid((vp[0].x + vp[2].x)/2, (vp[0].y + vp[2].y)/2);
 		
 		// Get the relative location based on the data of the QR code
@@ -132,11 +137,15 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 				(mid.y - frameMidY) * (mid.y - frameMidY));
 		
 		// Get the relative position tag (in pixels)
-		theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
+		theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x);
+		theta2 = qr_angle - theta1;
+		x_d = dis2Mid * cos(theta2);
+		y_d = dis2Mid * sin(theta2);
+		/*theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
 		theta2_deg = 90 - theta1 - qr_angle_deg; 
 		theta2 = theta2_deg * PI / 180;
 		x_d = dis2Mid * sin(theta2);
-		y_d = dis2Mid * cos(theta2);
+		y_d = dis2Mid * cos(theta2);*/
 
 		// Convert the position to meters
 		x_d = x_d * distance_M + distance_B;
@@ -149,8 +158,10 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
 		tag.angle = qr_angle;
-		tag.x = x_d;
-		tag.y = y_d;
+		tag.rel_x = x_d;
+		tag.rel_y = y_d;
+		tag.img_x = mid.x;
+		tag.img_y = mid.y;
 		tag.id = det->id;
 		tag.side_length = qr_length;
 		data.push_back(tag);
@@ -183,8 +194,10 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		// Init the default values of the TagData
 		tag.distance = -1;
 		tag.angle = -1;
-		tag.x = -1;
-		tag.y = -1;
+		tag.rel_x = -1;
+		tag.rel_y = -1;
+		tag.img_x = -1;
+		tag.img_y = -1;
 		tag.id = -1;
 
 		april_tag_detection_t *det;
@@ -220,24 +233,27 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 
 		// Get the angle of the square/rectangle
 		qr_angle = r.angle;
-		if (vp[0].x > vp[1].x && vp[0].y > vp[3].y &&
-				vp[0].y > vp[2].y && vp[0].x < vp[3].x) qr_angle += 90;
+		if (vp[0].x < vp[1].x && vp[0].y < vp[3].y &&
+				vp[0].y < vp[2].y && vp[0].x > vp[3].x) qr_angle += 90;
 		else if (vp[0].x > vp[1].x && vp[0].y < vp[1].y &&
 				vp[0].y > vp[3].y && vp[0].x > vp[2].x) qr_angle += 180;
-		else if (vp[0].x < vp[1].x && vp[0].x > vp[3].x &&
-				vp[0].y < vp[2].y && vp[0].y < vp[3].y) qr_angle += 270;
+		else if (vp[2].x > vp[1].x && vp[0].x < vp[3].x &&
+				vp[0].y > vp[2].y && vp[2].y < vp[1].y) qr_angle += 270;
+		else if (vp[0].x < vp[2].x && vp[1].y < vp[3].y &&
+				vp[1].x > vp[0].x && vp[2].y < vp[3].y) qr_angle += 360;
+
 		else if (vp[0].x == vp[3].x && vp[0].y == vp[1].y &&
 				vp[0].x < vp[1].x && vp[0].y < vp[3].y) qr_angle = 0;
-		else if (vp[0].x == vp[1].x && vp[0].y == vp[3].y &&
-				vp[0].x < vp[3].x && vp[0].y > vp[1].y) qr_angle = 90;
+		else if (vp[0].x - 1 <= vp[1].x && vp[0].y - 1 <= vp[3].y &&
+				vp[0].x > vp[3].x && vp[0].y < vp[1].y) qr_angle = 90;
 		else if (vp[0].x == vp[3].x && vp[0].y == vp[1].y &&
 				vp[0].x > vp[1].x && vp[0].y > vp[3].y) qr_angle = 180;
-		else if (vp[0].x == vp[1].x && vp[0].y == vp[3].y &&
-				vp[0].x > vp[3].x && vp[0].y < vp[1].y) qr_angle = 270;
+		else if (vp[0].x <= vp[1].x && vp[0].y == vp[3].y &&
+				vp[0].x < vp[3].x && vp[0].y > vp[1].y) qr_angle = 270;
 
 		// Draw a line for the angle
 		qr_angle_deg = qr_angle;
-		qr_angle = qr_angle * 3.1415 / 180;
+		qr_angle = qr_angle * PI / 180;
 		// TODO: use the tag 'c' parameter instead
 		cv::Point mid((vp[0].x + vp[2].x)/2, (vp[0].y + vp[2].y)/2);
 		cv::Point p2(mid.x + 25*cos(qr_angle), (mid.y - 25*sin(qr_angle)));
@@ -251,11 +267,22 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 				(mid.y - frameMidY) * (mid.y - frameMidY));
 		
 		// Get the relative position tag (in pixels)
-		theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
+		theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x);
+		theta2 = qr_angle - theta1;
+		x_d = dis2Mid * cos(theta2);
+		y_d = dis2Mid * sin(theta2);
+		/*theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
 		theta2_deg = 90 - theta1 - qr_angle_deg; 
 		theta2 = theta2_deg * PI / 180;
 		x_d = dis2Mid * sin(theta2);
-		y_d = dis2Mid * cos(theta2);
+		y_d = dis2Mid * cos(theta2);*/
+		line(outimg, mid, cv::Point(frameMidX, frameMidY), cv::Scalar(5, 5, 5), 2);
+		cv::Point ptb1(mid.x + dis2Mid * cos(theta1) - y_d * sin(theta1 + theta2),
+				mid.y + dis2Mid * sin(theta1) + y_d * cos(theta1 + theta2));
+		line(outimg, mid, ptb1, cv::Scalar(0, 200, 1), 2);
+		cv::Point ptb2(mid.x + dis2Mid * cos(theta1),
+				mid.y + dis2Mid * sin(theta1));
+		line(outimg, ptb1, ptb2, cv::Scalar(0, 200, 1), 2);
 
 		// Convert the position to meters
 		x_d = x_d * distance_M + distance_B;
@@ -268,8 +295,10 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
 		tag.angle = qr_angle;
-		tag.x = x_d;
-		tag.y = y_d;
+		tag.rel_x = x_d;
+		tag.rel_y = y_d;
+		tag.img_x = mid.x;
+		tag.img_y = mid.y;
 		tag.id = det->id;
 		data.push_back(tag);
 

@@ -88,7 +88,7 @@ void* get_video(void *)
 		pthread_mutex_lock(&mutex);
 		m_video.fetch();			// Decode the frame
 		m_video.latestImage(p);	// Store frame into the Mat
-		m_tagreader.process_Mat(p, tagdata);
+		m_tagreader.process_Mat(p, tagdata);	// Image processing
 		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit((void*) 0);

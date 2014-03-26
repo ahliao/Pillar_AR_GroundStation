@@ -27,8 +27,10 @@ struct TagData
 {
 	double distance;
 	double angle;
-	double x;
-	double y;
+	double rel_x;
+	double rel_y;
+	int img_x;
+	int img_y;
 	int id;
 	int side_length;
 };

@@ -114,13 +114,13 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		std::cout << nav_demo->ctrl_state << std::endl;
 		flying = true;
 		control_led(1, 2.0, 2);
-		//control_basic(TAKEOFF);
+		control_basic(TAKEOFF);	// Takeoff command
 		gettimeofday(&takeoff_time, NULL);
 	}
 
-	else if (tagdata.size() > 0) {
+	else if (flying && tagdata.size() > 0) {
 		TagData tag = tagdata.at(0);
-		std::cout << "Tag Pos: (" << tag.x << ", " << tag.y 
+		std::cout << "Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
 		   << ")" << std::endl;
 
 		int goal_x = 0;
@@ -129,14 +129,10 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		int curr_x = 0;
 		int curr_y = 0;
 
-		//curr_x = (tag.id % GRID_COL)*GRID_STEP + 
-		//	(frame_mid_x - tag.x)*pixel_scale;
-		//curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
-		//	(frame_mid_y - tag.y)*pixel_scale;
 		curr_x = (tag.id % GRID_COL)*GRID_STEP + 
-			(frame_mid_x - tag.x);
+			(frame_mid_x - tag.rel_x)*pixel_scale;
 		curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
-			(frame_mid_y - tag.y);
+			(frame_mid_y - tag.rel_y)*pixel_scale;
 
 		// Gain Kp
 		int Kp = 1;
@@ -169,7 +165,8 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	if (delta >= 10) {
 		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
-		//control_basic(LAND);
+		control_basic(LAND);
+		//flying = false;
 	}
 
 	reset_comm_watchdog();
@@ -259,6 +256,7 @@ void DroneController::default_config()
 	config_attitude_max(5000); // 5 meters
 	config_vz_max(750);		// 0.75 m/sec
 	config_vyaw_max(3);		// 3 rad/sec
+	config_video_channel(BOTTOM);
 }
 
 // if b is true, sets drone to send reduced navdata
@@ -322,6 +320,14 @@ void DroneController::config_vz_max(uint32_t max)
 void DroneController::config_vyaw_max(uint32_t max)
 {
 	sprintf(command, "AT*CONFIG=%d,\"control:control_yaw\",\"%d\"\r", seq, max);
+	send_drone_command(command);
+}
+
+// Video config
+void DroneController::config_video_channel(VideoChannel channel)
+{
+	sprintf(command, "AT*CONFIG=%d,\"video:video_channel\",\"%d\"\r", 
+			seq, channel);
 	send_drone_command(command);
 }
 
