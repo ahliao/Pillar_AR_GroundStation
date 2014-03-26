@@ -149,8 +149,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
 		tag.angle = qr_angle;
-		tag.x = rel_x;
-		tag.y = rel_y;
+		tag.x = x_d;
+		tag.y = y_d;
 		tag.id = det->id;
 		tag.side_length = qr_length;
 		data.push_back(tag);
@@ -195,8 +195,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		//		det->id, det->hamming, det->goodness);
 
 		// Get the coordinates based on the id detected
-		rel_x = det->id % map_length * map_tag_spacing;
-		rel_y = det->id / map_length * map_tag_spacing;
+		//rel_x = det->id % map_length * map_tag_spacing;
+		//rel_y = det->id / map_length * map_tag_spacing;
 
 		// get the four corners
 		// Find the angle between the lines
@@ -268,8 +268,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
 		tag.angle = qr_angle;
-		tag.x = rel_x;
-		tag.y = rel_y;
+		tag.x = x_d;
+		tag.y = y_d;
 		tag.id = det->id;
 		data.push_back(tag);
 
