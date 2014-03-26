@@ -27,7 +27,7 @@ struct navdata_t {
 
 	// Sequence number, incremented for each sent packet
 	uint32_t sequence;
-	bool vision_defined;
+	uint32_t vision_defined;
 
 	navdata_option_t options[];
 } __attribute__((packed));
@@ -76,10 +76,10 @@ struct navdata_demo_t
 	int32_t altitude;
 
 	// UAV's estimated linear velocity
-	//navdata_vec3_t velocity;
-	float   vx;                     /*!< UAV's estimated linear velocity */
-	float   vy;                     /*!< UAV's estimated linear velocity */
-	float   vz;                     /*!< UAV's estimated linear velocity */
+	navdata_vec3_t velocity;
+	//float   vx;                     /*!< UAV's estimated linear velocity */
+	//float   vy;                     /*!< UAV's estimated linear velocity */
+	//float   vz;                     /*!< UAV's estimated linear velocity */
 
 	uint32_t frameIndex;
 
