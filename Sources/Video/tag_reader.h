@@ -25,14 +25,14 @@ extern "C" {
 
 struct TagData
 {
-	double distance;
-	double angle;
-	double rel_x;
-	double rel_y;
+	float distance;
+	float angle;
+	float rel_x;
+	float rel_y;
+	float side_length;
 	int img_x;
 	int img_y;
 	int id;
-	int side_length;
 };
 
 class TagReader

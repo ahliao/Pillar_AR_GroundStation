@@ -9,6 +9,7 @@ all:
 	cd $(SRCS_VID_DIR); $(MAKE)
 	cd $(SRCS_APRIL_DIR); $(MAKE)
 	cd $(OBJ_DIR); $(MAKE)
+	echo yay
 
 clean:
 	cd $(OBJ_DIR); $(MAKE) clean

@@ -15,7 +15,7 @@ struct navdata_option_t
 	// set this to the size of this structure
 	uint16_t size;
 
-	uint8_t data[];
+	uint8_t data[1];
 } __attribute__((packed));
 
 struct navdata_t {
@@ -29,7 +29,7 @@ struct navdata_t {
 	uint32_t sequence;
 	uint32_t vision_defined;
 
-	navdata_option_t options[];
+	navdata_option_t options[1];
 } __attribute__((packed));
 
 struct navdata_mat3_t

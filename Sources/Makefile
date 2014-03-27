@@ -1,5 +1,5 @@
 CPP = g++
-CPPFLAGS = -g -Wall
+CPPFLAGS = -g -Wall -Werror -Wvla -pedantic -Wextra -Wconversion -O3
 OBJ_DIR = ../obj/
 
 MAINSRCS := $(wildcard *.cpp)

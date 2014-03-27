@@ -49,6 +49,7 @@ extern "C" {
 
 // DEBUG libraries
 #include <iostream>
+#include <fstream>
 
 // Timer Tests
 #include <ctime>
@@ -97,6 +98,10 @@ void* get_video(void *)
 int main()
 {
 	//signal(SIGPIPE, SIG_IGN); // Prevents termination if socket is down
+	
+	// ofstream to write the txt file for tagdata
+	ofstream tagfile;
+	int count = 0;
 
 	// Create the Drone Controller
 	cout << "Creating DroneController Object...\n";
@@ -162,9 +167,9 @@ int main()
 			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
 			 << "State " << ((navdata_demo_t*)(navdata->options))->ctrl_state << endl
 			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
-			 //<< "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
-			 //<< "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
-			 //<< "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
+			 << "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
+			 << "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
+			 << "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
 			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
 			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
 			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
@@ -181,14 +186,21 @@ int main()
 			cerr << "ERROR: Mat is not valid\n";
 			break;
 		}
-		char input = waitKey(1);
+		char input = (char) waitKey(1);
 		if (input == 27) break;
 		else if (input == 'p') {
 			char filename[64];
-			//sprintf(filename, "image%d.jpg", count);
-			sprintf(filename, "image.jpg");
+			char tagfilename[64];
+			sprintf(filename, "image%d.jpg", count);
+			sprintf(tagfilename, "image%d.txt", count);
+			//sprintf(filename, "image.jpg");
 			cout << "Took a picture";
 			imwrite(filename, p);
+			tagfile.open(tagfilename);
+			for (uint8_t i = 0; i < tagdata.size(); ++i)
+				tagfile << tagdata[i].id << " " << 
+					tagdata[i].img_x << " " << tagdata[i].img_y << endl;
+			tagfile.close();
 			//count++;
 		}
 	}

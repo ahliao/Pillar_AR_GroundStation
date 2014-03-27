@@ -84,7 +84,7 @@ void DroneController::close_ports()
 int DroneController::get_navdata(navdata_t ** data)
 {
 	// read the navdata received
-	int l, size = 0;
+	long int l, size = 0;
 	size = recvfrom(navdata_socket, &msg[0], NAVDATA_BUFFER_SIZE, 0x0, 
 			(struct sockaddr *)&from, (socklen_t *) &l);
 	if (size == 0) return 1;
@@ -124,62 +124,69 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		control_ftrim();
 		flying = true;
 		control_led(1, 2.0, 2);
-		//control_basic(TAKEOFF);	// Takeoff command
+		control_basic(TAKEOFF);	// Takeoff command
 		gettimeofday(&takeoff_time, NULL);
 	}
 
-	/*else if (flying && tagdata.size() > 0) {
+	else if (flying && tagdata.size() > 0) {
 		TagData tag = tagdata.at(0);
 		std::cout << "Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
 		   << ")" << std::endl;
 
-		int goal_x = 0;
-		int goal_y = 0;
-		float pixel_scale = 17 / tag.side_length; // cm per px
-		int curr_x = 0;
-		int curr_y = 0;
+		//int goal_x = 0;
+		//int goal_y = 0;
+		//float pixel_scale = 8.0f / tag.side_length; // cm per px
+		//int curr_x = 0;
+		//int curr_y = 0;
 
-		curr_x = (tag.id % GRID_COL)*GRID_STEP + 
+		/*curr_x = (tag.id % GRID_COL)*GRID_STEP + 
 			(frame_mid_x - tag.rel_x)*pixel_scale;
 		curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
 			(frame_mid_y - tag.rel_y)*pixel_scale;
+		curr_x = (int)((tag.id % GRID_COL)*GRID_STEP + 
+			((float)frame_mid_x - tag.rel_x));
+		curr_y = (int)((tag.id % GRID_ROW)*GRID_STEP + 
+			((float)frame_mid_y - tag.rel_y));*/
 
 		// Gain Kp
-		int Kp = 1;
+		float Kp = 1.5;
 
 		// rel_x and rel_y are currently the difference (relative pos)
 
 		//int error_x = goal_x - curr_x;
 		//int error_y = goal_y - curr_y;
-		int error_x = rel_x;
-		int error_y = rel_y;
-		int error_yaw = tag.angle;
+		float error_x = (float)(frame_mid_x - tag.img_x);
+		float error_y = (float)(frame_mid_y - tag.img_y);
+		float error_yaw = tag.angle;
 
-		float angle_x = (Kp * error_x) / 2048;
-		float angle_y = (Kp * error_y) / 2048;
-		float ang_vel = (Kp * error_yaw) / 2048;
+		float angle_x = (Kp * error_x) / 2048.0f;
+		float angle_y = (Kp * error_y) / 2048.0f;
+//		angle_x = 0;
+//		angle_y = 0;
+		float ang_vel = (Kp * error_yaw) / 2.0f;
 
 		// handle clipping
-		if (angle_x > 1.0) angle_x = 1.0;
-		else if (angle_x < -1.0) angle_x = -1.0;
-		if (angle_y > 1.0) angle_y = 1.0;
-		else if (angle_y < -1.0) angle_y = -1.0;
-		if (ang_vel > 1.0) ang_vel = 1.0;
-		else if (ang_vel < -1.0) ang_vel = -1.0;
+		if (angle_x > 1.0f) angle_x = 1.0f;
+		else if (angle_x < -1.0f) angle_x = -1.0f;
+		if (angle_y > 1.0f) angle_y = 1.0f;
+		else if (angle_y < -1.0f) angle_y = -1.0f;
+		if (ang_vel > 1.0f) ang_vel = 1.0f;
+		else if (ang_vel < -1.0f) ang_vel = -1.0f;
 
-		control_move(true, angle_x, angle_y, 0, ang_vel);
+		control_move(true, angle_x, angle_y, 0, 0);
+//		control_move(true, 0, 0, 0.0, ang_vel);
 
-	} */else {
-		control_move(false, 0, 0, 0, 0);
+	} else {
+		control_move(true, 0, 0, 0.20f, 0);
 	}
 
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);
 	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
-	if (delta >= 10) {
+	if (delta >= 15) {
 		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
-		//control_basic(LAND);
+		control_basic(LAND);
 		//flying = false;
 	}
 
@@ -286,9 +293,11 @@ void DroneController::config_navdata_demo(bool b)
 // Config additional navdata options
 void DroneController::config_options(NavdataOptions options)
 {
-	// TODO: choose more navdata options
-	sprintf(command, "AT*CONFIG=%d,\"general:navdata_options\",\"105971713\"\r", seq);
-	send_drone_command(command);
+	if (options == NAVDATA_ALL) {
+		// TODO: choose more navdata options
+		sprintf(command, "AT*CONFIG=%d,\"general:navdata_options\",\"105971713\"\r", seq);
+		send_drone_command(command);
+	}
 }
 
 // Set which gain/config values to use if outside or inside
