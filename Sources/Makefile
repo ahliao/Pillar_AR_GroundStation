@@ -2,7 +2,7 @@ CPP = g++
 CPPFLAGS = -g -Wall -Werror -Wvla -pedantic -Wextra -Wconversion -O3
 OBJ_DIR = ../obj/
 
-MAINSRCS := $(wildcard *.cpp)
+MAINSRCS := $(wildcard *.cpp) 
 MAINOBJ = $(addprefix $(OBJ_DIR),$(MAINSRCS:.cpp=.o))
 
 all: $(MAINOBJ)

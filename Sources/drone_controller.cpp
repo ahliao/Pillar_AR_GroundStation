@@ -108,13 +108,14 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	}
 
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
+	std::cout << "Vector size: " << tagdata.size() << std::endl;
 
-	if(tagdata.size() > 0) {
+	/*if(tagdata.size() > 0) {
 		TagData tag = tagdata.at(0);
 	std::cout << "Tag ID: " << tag.id << std::endl <<
 		"Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
 	   << ")" << std::endl;
-	}
+	}*/
 
 	// Take off if currently landed
 	if (!flying) {//nav_demo->ctrl_state == Landed) {
@@ -124,14 +125,18 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		control_ftrim();
 		flying = true;
 		control_led(1, 2.0, 2);
-		control_basic(TAKEOFF);	// Takeoff command
+		//control_basic(TAKEOFF);	// Takeoff command
 		gettimeofday(&takeoff_time, NULL);
 	}
 
 	else if (flying && tagdata.size() > 0) {
+		for (uint8_t i = 0; i < tagdata.size(); ++i) {
+			TagData tag1 = tagdata.at(i);
+			std::cout << "Tag ID: " << tag1.id << std::endl;
+			std::cout << "Tag Pos: " << i << "(" << tag1.rel_x << ", " << tag1.rel_y 
+			   << ")" << std::endl;
+		}
 		TagData tag = tagdata.at(0);
-		std::cout << "Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
-		   << ")" << std::endl;
 
 		//int goal_x = 0;
 		//int goal_y = 0;
@@ -148,6 +153,8 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		curr_y = (int)((tag.id % GRID_ROW)*GRID_STEP + 
 			((float)frame_mid_y - tag.rel_y));*/
 
+		// This should hover over a certain tag
+
 		// Gain Kp
 		float Kp = 1.5;
 
@@ -155,8 +162,8 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 
 		//int error_x = goal_x - curr_x;
 		//int error_y = goal_y - curr_y;
-		float error_x = (float)(frame_mid_x - tag.img_x);
-		float error_y = (float)(frame_mid_y - tag.img_y);
+		float error_x = (float)(tag.img_x - frame_mid_x);
+		float error_y = (float)(tag.img_y - frame_mid_y);
 		float error_yaw = tag.angle;
 
 		float angle_x = (Kp * error_x) / 2048.0f;

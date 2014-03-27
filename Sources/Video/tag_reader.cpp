@@ -1,6 +1,7 @@
 // File: TagReader.cpp
 // Written by: Pillar Technologies MDP Team 2014
 // Scans OpenCV's Mat image for any April Tags
+// NOTE: Tags have to be different
 
 #include "tag_reader.h"
 
@@ -301,6 +302,7 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		tag.img_y = mid.y;
 		tag.id = det->id;
 		data.push_back(tag);
+		std::cout << "Pushed tag to vector\n";
 
 		april_tag_detection_destroy(det);
 	}
