@@ -106,26 +106,18 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		std::cerr << "ERROR: Navdata is not valid.\n";
 		return 1;
 	}
-
 	navdata_demo_t* nav_demo = ((navdata_demo_t*)(navdata->options));
-	std::cout << "Vector size: " << tagdata.size() << std::endl;
-
-	/*if(tagdata.size() > 0) {
-		TagData tag = tagdata.at(0);
-	std::cout << "Tag ID: " << tag.id << std::endl <<
-		"Tag Pos: (" << tag.rel_x << ", " << tag.rel_y 
-	   << ")" << std::endl;
-	}*/
 
 	// Take off if currently landed
 	if (!flying) {//nav_demo->ctrl_state == Landed) {
+		control_basic(EMERGENCY);	// Takeoff command
 		std::cout << nav_demo->ctrl_state << std::endl;
 		default_config();
 		reset_comm_watchdog();
 		control_ftrim();
 		flying = true;
 		control_led(1, 2.0, 2);
-		//control_basic(TAKEOFF);	// Takeoff command
+		control_basic(TAKEOFF);	// Takeoff command
 		gettimeofday(&takeoff_time, NULL);
 	}
 
@@ -133,7 +125,7 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		for (uint8_t i = 0; i < tagdata.size(); ++i) {
 			TagData tag1 = tagdata.at(i);
 			std::cout << "Tag ID: " << tag1.id << std::endl;
-			std::cout << "Tag Pos: " << i << "(" << tag1.rel_x << ", " << tag1.rel_y 
+			std::cout << "Tag Pos: " << i << "(" << tag1.img_x << ", " << tag1.img_y 
 			   << ")" << std::endl;
 		}
 		TagData tag = tagdata.at(0);
@@ -156,15 +148,17 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		// This should hover over a certain tag
 
 		// Gain Kp
-		float Kp = 1.5;
+		float Kp = 5.0;
 
 		// rel_x and rel_y are currently the difference (relative pos)
 
 		//int error_x = goal_x - curr_x;
 		//int error_y = goal_y - curr_y;
-		float error_x = (float)(tag.img_x - frame_mid_x);
+		float error_x = -(float)(tag.img_x - frame_mid_x);
 		float error_y = (float)(tag.img_y - frame_mid_y);
 		float error_yaw = tag.angle;
+		std::cout << "Error_x: " << error_x << std::endl;
+		std::cout << "Error_y: " << error_y << std::endl;
 
 		float angle_x = (Kp * error_x) / 2048.0f;
 		float angle_y = (Kp * error_y) / 2048.0f;
@@ -179,18 +173,19 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 		else if (angle_y < -1.0f) angle_y = -1.0f;
 		if (ang_vel > 1.0f) ang_vel = 1.0f;
 		else if (ang_vel < -1.0f) ang_vel = -1.0f;
+		std::cout << "angle_y: " << angle_y << std::endl;
 
-		control_move(true, angle_x, angle_y, 0, 0);
+		control_move(true, 0, angle_y, 0, 0);
 //		control_move(true, 0, 0, 0.0, ang_vel);
 
 	} else {
-		control_move(true, 0, 0, 0.20f, 0);
+		control_move(false, 0, 0, 0.10f, 0);
 	}
 
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);
 	long delta = curr_time.tv_sec - takeoff_time.tv_sec;
-	if (delta >= 15) {
+	if (delta >= 25) {
 		std::cout << nav_demo->ctrl_state << std::endl;
 		control_led(2, 2.0, 2);
 		control_basic(LAND);
