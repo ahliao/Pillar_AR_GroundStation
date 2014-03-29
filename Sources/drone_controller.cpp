@@ -102,6 +102,11 @@ int DroneController::get_navdata(navdata_t ** data)
 
 int DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
 {
+	return 0;
+}
+
+/*int DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
+{
 	if (navdata == 0) {
 		std::cerr << "ERROR: Navdata is not valid.\n";
 		return 1;
@@ -129,21 +134,6 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 			   << ")" << std::endl;
 		}
 		TagData tag = tagdata.at(0);
-
-		//int goal_x = 0;
-		//int goal_y = 0;
-		//float pixel_scale = 8.0f / tag.side_length; // cm per px
-		//int curr_x = 0;
-		//int curr_y = 0;
-
-		/*curr_x = (tag.id % GRID_COL)*GRID_STEP + 
-			(frame_mid_x - tag.rel_x)*pixel_scale;
-		curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
-			(frame_mid_y - tag.rel_y)*pixel_scale;
-		curr_x = (int)((tag.id % GRID_COL)*GRID_STEP + 
-			((float)frame_mid_x - tag.rel_x));
-		curr_y = (int)((tag.id % GRID_ROW)*GRID_STEP + 
-			((float)frame_mid_y - tag.rel_y));*/
 
 		// This should hover over a certain tag
 
@@ -195,7 +185,7 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	reset_comm_watchdog();
 
 	return 0;
-}
+}*/
 
 ///////////////////////////
 ///// End Control Loop ////

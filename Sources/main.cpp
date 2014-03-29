@@ -45,6 +45,7 @@ extern "C" {
 
 // OpenCV headers
 #include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 
 // DEBUG libraries
@@ -55,6 +56,7 @@ extern "C" {
 #include <ctime>
 
 // Multithreading with the C lib
+#include <boost/thread.hpp>
 #include <pthread.h>
 
 using namespace std;
@@ -70,7 +72,21 @@ DroneController m_controller;
 Mat p;	// Mat to store video frame  (Takes up a ton of memory)
 ARDrone2Video m_video;
 TagReader m_tagreader;
+// Init TagData
 vector<TagData> tagdata;
+
+// Move variables
+int roll_slider = 100;
+int ROLL_MAX = 200;
+int pitch_slider = 100;
+int PITCH_MAX = 200;
+int vz_slider = 100;
+int VZ_MAX = 200;
+int rot_slider = 100;
+int ROT_MAX = 200;
+
+// DEBUG
+bool VIDEO_CAP = false;
 
 // Thread to handle retrieving the navdata
 void* get_navdata(void *)
@@ -93,6 +109,11 @@ void* get_video(void *)
 		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit((void*) 0);
+}
+
+void on_trackbar( int, void* )
+{//This function gets called whenever a
+	// trackbar position is changed
 }
 
 int main()
@@ -124,8 +145,6 @@ int main()
 
 	// Init TagReader object
 	cout << "Created TagReader\n";
-	// Init TagData
-	//vector<TagData> tagdata;
 
 	// Create the mutex to sync shared data
 	pthread_mutex_init(&mutex, NULL);
@@ -136,27 +155,43 @@ int main()
 	//pthread_t thread2;
 	//pthread_create(&thread2, NULL, &get_video, NULL);
 
+	// Taking a picture variables
+	timeval picture_time, current_time;
+	gettimeofday(&picture_time, NULL);
+
+	// OpenCV GUI stuff
+	namedWindow("GUI", WINDOW_AUTOSIZE);
+	char TrackbarName[50];
+	sprintf( TrackbarName, "Roll %f", (float)(roll_slider-100.0)/100.0);
+	createTrackbar( TrackbarName, "GUI", &roll_slider, 
+			ROLL_MAX, on_trackbar);
+	sprintf( TrackbarName, "Pitch %f", (float)(pitch_slider-100.0)/100.0);
+	createTrackbar( TrackbarName, "GUI", &pitch_slider, 
+			PITCH_MAX, on_trackbar);
+	sprintf( TrackbarName, "VZ %f", (float)(vz_slider-100.0)/100.0);
+	createTrackbar( TrackbarName, "GUI", &vz_slider, 
+			VZ_MAX, on_trackbar);
+	sprintf( TrackbarName, "Rot %f", (float)(rot_slider-100.0)/100.0);
+	createTrackbar( TrackbarName, "GUI", &rot_slider, 
+			ROT_MAX, on_trackbar);
+
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
 	for(;;) {
-		//m_video.fetch();			// Decode the frame
-		//m_video.latestImage(p);	// Store frame into the Mat
+		m_video.fetch();			// Decode the frame
+		m_video.latestImage(p);	// Store frame into the Mat
 
 		// Timing test
 		timeval start, end;
 		gettimeofday(&start, NULL);
 		
 		// Do image processing
-	//	m_tagreader.process_Mat(p, tagdata);
-		m_video.fetch();			// Decode the frame
-		m_video.latestImage(p);	// Store frame into the Mat
 		m_tagreader.process_Mat(p, tagdata,p);	// Image processing
 
 		gettimeofday(&end, NULL);
 		long delta = (end.tv_sec  - start.tv_sec) * 1000000u + 
 				 end.tv_usec - start.tv_usec;
 		cout << "Tag detect time: " << delta << " ms" << endl;
-		//m_controller.get_navdata(&navdata);
 
 		// Handle control using tagdata and navdata
 		if (m_controller.control_loop(navdata, tagdata)) break;
@@ -179,19 +214,43 @@ int main()
 		else cout << "State is unknown\n";
 		}
 
+		gettimeofday(&current_time, NULL);
+		delta = (current_time.tv_sec  - picture_time.tv_sec) * 1000000u + 
+				 current_time.tv_usec - picture_time.tv_usec;
+		if (delta > 1 && VIDEO_CAP) {
+			// take a picture
+			char filename[64];
+			char tagfilename[64];
+			sprintf(filename, "image%d.tif", count);
+			sprintf(tagfilename, "image%d.txt", count);
+			cout << "Took a picture";
+			imwrite(filename, p);
+			tagfile.open(tagfilename);
+			for (uint8_t i = 0; i < tagdata.size(); ++i)
+				tagfile << tagdata[i].id << " " << 
+					tagdata[i].img_x << " " << tagdata[i].img_y << endl;
+			tagfile.close();
+			count++;
+			gettimeofday(&picture_time, NULL);
+		}
+
 		// show the frame
 		// TODO: Probably switch to SDL or other
-		if(p.size().width > 0 && p.size().height > 0) imshow("Camera", p);
-		else {
+		if(p.size().width > 0 && p.size().height > 0) {
+			imshow("GUI", p);
+		} else {
 			cerr << "ERROR: Mat is not valid\n";
 			break;
 		}
 		char input = (char) waitKey(1);
-		if (input == 27) break;
+		if (input == 27) {
+			m_controller.control_basic(LAND);
+			break;
+		}
 		else if (input == 'p') {
 			char filename[64];
 			char tagfilename[64];
-			sprintf(filename, "image%d.jpg", count);
+			sprintf(filename, "image%d.tif", count);
 			sprintf(tagfilename, "image%d.txt", count);
 			//sprintf(filename, "image.jpg");
 			cout << "Took a picture";
@@ -201,15 +260,22 @@ int main()
 				tagfile << tagdata[i].id << " " << 
 					tagdata[i].img_x << " " << tagdata[i].img_y << endl;
 			tagfile.close();
-			//count++;
+			count++;
+		} else if (input == ' ') {
+			m_controller.control_basic(TAKEOFF);
+		} else if (input == 'q') {
+			m_controller.control_basic(LAND);
+		} else if (input == 'n') {
+			m_controller.control_move(true, (float)roll_slider/100.0f - 1, 
+					(float)pitch_slider/100.0f - 1,
+					(float)vz_slider/100.0f - 1, 
+					(float)rot_slider/100.0f - 1);
 		}
 	}
-	m_controller.control_basic(LAND);
 
 	cout << "Halting threads\n";
 	running = false;
 	pthread_join(thread1, NULL);
-	cout << "Test\n";
 	//pthread_join(thread2, NULL);
 	pthread_mutex_destroy(&mutex);
 

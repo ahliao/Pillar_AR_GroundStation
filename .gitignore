@@ -16,3 +16,7 @@
 *~
 *.swp
 *.swo
+
+# Image files
+*.txt
+*.jpg
