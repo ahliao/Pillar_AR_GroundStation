@@ -7,7 +7,7 @@ CPPFLAGS = -g -Wall
 OBJS = $(wildcard *.o)
 
 OPENCV = `pkg-config opencv --cflags --libs`
-LIBS =  -lavformat -lavcodec -lavutil -lz -lm -lpthread -lswscale -fopenmp
+LIBS =  -lavformat -lavcodec -lavutil -lz -lm -lpthread -lswscale -lboost_thread-mt -lncurses
 
 all: $(PROG_DIR)
 	$(CPP) -o $(PROG_DIR)/$(PROG) $(OBJS) $(LIBS) $(OPENCV)

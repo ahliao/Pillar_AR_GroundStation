@@ -3,7 +3,6 @@
 // Shortened to include only support for AR Drone 2.0
 
 #include "ardrone_video.h"
-#include <iostream>
 
 bool ARDrone2Video::s_init = false;
 
@@ -247,9 +246,7 @@ bool ARDrone2Video::end()
 
 void ARDrone2Video::latestImage(cv::Mat &image) const
 {
-	//m_mutex.lock();
-	image = m_img.clone();
-	//m_mutex.unlock();
+	m_img.copyTo(image);
 }
 
 
