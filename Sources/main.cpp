@@ -86,7 +86,7 @@ int rot_slider = 100;
 int ROT_MAX = 200;
 
 // DEBUG
-bool VIDEO_CAP = false;
+bool VIDEO_CAP = true;
 
 // Thread to handle retrieving the navdata
 void* get_navdata(void *)
@@ -161,7 +161,7 @@ int main()
 
 	// OpenCV GUI stuff
 	namedWindow("GUI", WINDOW_AUTOSIZE);
-	char TrackbarName[50];
+	/*char TrackbarName[50];
 	sprintf( TrackbarName, "Roll %f", (float)(roll_slider-100.0)/100.0);
 	createTrackbar( TrackbarName, "GUI", &roll_slider, 
 			ROLL_MAX, on_trackbar);
@@ -173,7 +173,7 @@ int main()
 			VZ_MAX, on_trackbar);
 	sprintf( TrackbarName, "Rot %f", (float)(rot_slider-100.0)/100.0);
 	createTrackbar( TrackbarName, "GUI", &rot_slider, 
-			ROT_MAX, on_trackbar);
+			ROT_MAX, on_trackbar);*/
 
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
@@ -215,8 +215,7 @@ int main()
 		}
 
 		gettimeofday(&current_time, NULL);
-		delta = (current_time.tv_sec  - picture_time.tv_sec) * 1000000u + 
-				 current_time.tv_usec - picture_time.tv_usec;
+		delta = (current_time.tv_sec  - picture_time.tv_sec) * 1u;
 		if (delta > 1 && VIDEO_CAP) {
 			// take a picture
 			char filename[64];
@@ -261,7 +260,7 @@ int main()
 					tagdata[i].img_x << " " << tagdata[i].img_y << endl;
 			tagfile.close();
 			count++;
-		} else if (input == ' ') {
+		/*} else if (input == ' ') {
 			m_controller.control_basic(TAKEOFF);
 		} else if (input == 'q') {
 			m_controller.control_basic(LAND);
@@ -269,7 +268,7 @@ int main()
 			m_controller.control_move(true, (float)roll_slider/100.0f - 1, 
 					(float)pitch_slider/100.0f - 1,
 					(float)vz_slider/100.0f - 1, 
-					(float)rot_slider/100.0f - 1);
+					(float)rot_slider/100.0f - 1);*/
 		}
 	}
 

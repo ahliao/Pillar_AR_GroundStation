@@ -102,6 +102,8 @@ int DroneController::get_navdata(navdata_t ** data)
 
 int DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
 {
+	reset_comm_watchdog();
+
 	return 0;
 }
 
