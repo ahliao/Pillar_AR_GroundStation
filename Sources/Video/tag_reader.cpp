@@ -55,10 +55,10 @@ TagReader::~TagReader()
 // REQUIRES: allocated Mat and TagData
 // MODIFIES: data
 // EFFECTS:  Finds April Tags and stores info in data
-void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
+void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data)
 {
 	// Clear the vector
-	data.clear();
+	data->clear();
 
 	// TagData struct
 	TagData tag;
@@ -142,11 +142,6 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		theta2 = qr_angle - theta1;
 		x_d = dis2Mid * cos(theta2);
 		y_d = dis2Mid * sin(theta2);
-		/*theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
-		theta2_deg = 90 - theta1 - qr_angle_deg; 
-		theta2 = theta2_deg * PI / 180;
-		x_d = dis2Mid * sin(theta2);
-		y_d = dis2Mid * cos(theta2);*/
 
 		// Convert the position to meters
 		//x_d = x_d * distance_M + distance_B;
@@ -165,11 +160,11 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 		tag.img_y = mid.y;
 		tag.id = det->id;
 		tag.side_length = qr_length;
-		data.push_back(tag);
+		data->push_back(tag);
 
-		image_u8_destroy(im);
 		april_tag_detection_destroy(det);
 	}
+	image_u8_destroy(im);
 	zarray_destroy(detections);
 }
 
@@ -177,13 +172,13 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data)
 // MODIFIES: data, outimg
 // EFFECTS:  Finds April Tags and stores info in data
 //			 draws data and lines onto outimg
-void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::Mat& outimg)
+void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data, cv::Mat& outimg)
 {
 	// copy the img to outimg
 	outimg = img.clone();
 
 	// Clear the vector
-	data.clear();
+	data->clear();
 
 	// TagData struct
 	TagData tag;
@@ -304,11 +299,11 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> &data, cv::
 		tag.img_x = mid.x;
 		tag.img_y = mid.y;
 		tag.id = det->id;
-		data.push_back(tag);
-		std::cout << "Pushed tag to vector\n";
+		data->push_back(tag);
 
 		april_tag_detection_destroy(det);
 	}
 
+	image_u8_destroy(im);
 	zarray_destroy(detections);
 }

@@ -78,7 +78,7 @@ class DroneController
 		///////////////////////////
 
 		// Control Loop
-		int control_loop(const navdata_t *const data, const std::vector<TagData> &tagdata);
+		void control_loop(const navdata_t *const data, const std::vector<TagData> &tagdata);
 
 		// Basic takeoff, land, and emergency commands
 		void control_basic(ControlBasic cmd);

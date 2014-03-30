@@ -100,7 +100,7 @@ int DroneController::get_navdata(navdata_t ** data)
 // Control Loop //////////
 //////////////////////////
 
-int DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
+void DroneController::control_loop(const navdata_t *const navdata, const std::vector<TagData> &tagdata)
 {
 	/*if (navdata == 0) {
 		std::cerr << "ERROR: Navdata is not valid.\n";
@@ -193,8 +193,6 @@ int DroneController::control_loop(const navdata_t *const navdata, const std::vec
 	}*/
 
 	reset_comm_watchdog();
-
-	return 0;
 }
 
 ///////////////////////////

@@ -72,12 +72,17 @@ using namespace cv;
 void get_navdata(bool* running, DroneController *m_controller, navdata_t** navdata);
 void get_video(bool *running, ARDrone2Video *m_video, Mat* p, 
 		TagReader *m_tagreader, vector<TagData> *tagdata);
+void handle_control(bool *running, DroneController *m_controller, 
+		navdata_t* navdata, vector<TagData> *tagdata);
 
+void redraw(bool* running);
 void initGUI();
 void drawFeedback(const char str[]);
 
 int main()
 {
+	freopen("/dev/null", "r", stderr); 
+
 	DroneController m_controller;
 	Mat p;	// Mat to store video frame  (Takes up a ton of memory)
 	ARDrone2Video m_video;
@@ -93,17 +98,14 @@ int main()
 
 	// GUI init
 	initGUI();
-
-	char str[80];	// Buffer for user input
+	boost::thread drawThread(redraw, running);
 	
 	// Create the Drone Controller
-	//cout << "Creating DroneController Object...\n";
 	drawFeedback("Creating DroneController object...");
 	m_controller.init_ports();
 	if (!m_controller.is_connected()) return 1;
 
 	// Create the Video handler
-	//cout << "Creating ARDrone2Video Object\n";
 	drawFeedback("Creating ARDrone2Video object...");
 	Address video_address("192.168.1.1", 5555);	// Address to the drone's video
 	// Connect the handler to the drone
@@ -113,52 +115,30 @@ int main()
 	// If not, continue program without video
 	if (m_video.isStarted()) drawFeedback("Successful in connecting to drone");
 	else { drawFeedback("ERROR: Cout not connect to drone"); return 1; }
-	//if (m_video.isStarted()) cout << "Successful in connecting to drone\n";
-	//else { cerr << "ERROR: Could not connect to drone\n"; return 1; }
 
 	// Init any image processing 
 	p = Mat(360, 640, CV_8UC3, Scalar(0,200,0));	// Mat to store video frame
 
-	// Init TagReader object
-	//cout << "Created TagReader\n";
-
 	// Create the thread to retreive navdata
-	//boost::thread navThread(get_navdata, running, &m_controller, &navdata);
-	//boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
+	drawFeedback("Starting threads...");
+	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
+	boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
+	boost::thread controlThread(handle_control, running, &m_controller, navdata, &tagdata);
 
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
-	for(;;) {
+	char str[80];
+	while(*running) {
 		// Handle control using tagdata and navdata
-		if (m_controller.control_loop(navdata, tagdata)) break;
+		// TODO: Move to another thread
+		wmove(inputwin, 1, 4);
+		wgetstr(inputwin, str);
+		if (!strcmp(str, "exit")) *running = false;
+		werase(inputwin);
+		box(inputwin, 0, 0);
+		mvwprintw(inputwin, 1, 1, ">>");
 
-		// Output navdata
-		/*if (navdata != 0) {
-		cout << "header " << navdata->header << endl
-			 << "Battery " << ((navdata_demo_t*)(navdata->options))->vbat_flying_percentage << endl
-			 << "State " << ((navdata_demo_t*)(navdata->options))->ctrl_state << endl
-			 << "Alt " << ((navdata_demo_t*)(navdata->options))->altitude << endl
-			 << "Vx " << ((navdata_demo_t*)(navdata->options))->velocity._0 << endl
-			 << "Vy " << ((navdata_demo_t*)(navdata->options))->velocity._1 << endl
-			 << "Vz " << ((navdata_demo_t*)(navdata->options))->velocity._2 << endl
-			 << "Pitch " << ((navdata_demo_t*)(navdata->options))->pitch << endl
-			 << "Roll " << ((navdata_demo_t*)(navdata->options))->roll << endl
-			 << "Yaw " << ((navdata_demo_t*)(navdata->options))->yaw << endl;
-			if (!navdata) cout << "STATE is Landed\n";
-			else if (navdata->ardrone_state & (1U << 0))
-				cout << "State is flying\n";
-			else cout << "State is unknown\n";
-		}*/
-
-		// show the frame
-		// TODO: Probably switch to SDL or other
-		if(p.size().width > 0 && p.size().height > 0) imshow("Camera", p);
-		else {
-			drawFeedback("ERROR: Mat is not valid");
-			break;
-		}
-		char input = (char) waitKey(1);
-		if (input == 27) break;
+		//if (input == 27) break;
 		/*else if (input == 'p') {
 			char filename[64];
 			char tagfilename[64];
@@ -176,24 +156,35 @@ int main()
 	}
 	m_controller.control_basic(LAND);
 
-	//cout << "Halting threads\n";
 	drawFeedback("Halting threads");
 	*running = false;
-	//navThread.join();
-	//vidThread.join();
+	navThread.join();
+	controlThread.join();
+	drawThread.join();
+	vidThread.join();
 
 	// close the sockets
-	//cout << "Closing ports\n";
 	drawFeedback("Closing ports");
 	m_controller.close_ports();
 
 	// Halt the video handler
 	drawFeedback("Halting video processor");
 	m_video.end();
-
+	
 	// Memory management
 	drawFeedback("Cleaning up");
 	delete running;
+
+	// Clean up the GUI
+	drawFeedback("Cleaning up GUI");
+	delwin(mainwin);
+	delwin(headerwin);
+	delwin(navwin);
+	delwin(tagwin);
+	delwin(mapwin);
+	delwin(feedbackwin);
+	delwin(inputwin);
+	endwin();
 
 	return 0;
 }
@@ -202,7 +193,7 @@ void initGUI()
 {
 	feedbackRow = 1;
 	int row, col;
-	system("resize -s 40 120");
+	int resized = system("resize -s 40 120");
 	initscr();
 	cbreak();
 	curs_set(0);
@@ -258,7 +249,6 @@ void drawFeedback(const char str[])
 	mvwprintw(feedbackwin, feedbackRow, 1, feedback);
 	if (feedbackRow <= 5) feedbackRow += 1;
 	else feedbackRow = 1;
-	wrefresh(feedbackwin);
 }
 
 // Thread to handle retrieving the navdata
@@ -266,11 +256,34 @@ void get_navdata(bool* running, DroneController *m_controller, navdata_t** navda
 {
 	while (*running) {
 		m_controller->get_navdata(navdata);
-		/*cout << "header " << (*navdata)->header << endl
-			 << "Pitch " << ((navdata_demo_t*)((*navdata)->options))->pitch << endl
-			 << "Roll " << ((navdata_demo_t*)((*navdata)->options))->roll << endl
-			 << "Yaw " << ((navdata_demo_t*)((*navdata)->options))->yaw << endl;*/
-		//mvwprintw(navwin, 2, 1, "Header %d", (*navdata)->header);
+		navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
+		werase(navwin);
+		mvwprintw(navwin, 1, 1, "Navigation Data");
+		mvwprintw(navwin, 2, 1, "Header %d", (*navdata)->header);
+		mvwprintw(navwin, 3, 1, "Battery: %d", nav_demo->vbat_flying_percentage);
+		mvwprintw(navwin, 4, 1, "State: %d", nav_demo->ctrl_state);
+		mvwprintw(navwin, 5, 1, "Altitude: %d", nav_demo->altitude);
+		mvwprintw(navwin, 6, 1, "Vx: %f", nav_demo->velocity._0);
+		mvwprintw(navwin, 7, 1, "Vy: %f", nav_demo->velocity._1);
+		mvwprintw(navwin, 8, 1, "Vz: %f", nav_demo->velocity._2);
+		mvwprintw(navwin, 9, 1, "Pitch: %f", nav_demo->pitch);
+		mvwprintw(navwin, 10, 1, "Roll:  %f", nav_demo->roll);
+		mvwprintw(navwin, 11, 1, "Yaw:   %f", nav_demo->yaw);
+	}
+}
+
+void redraw(bool* running)
+{
+	while (*running) {
+		box(navwin, 0, 0);
+		wrefresh(navwin);
+		wrefresh(feedbackwin);
+		wrefresh(tagwin);
+
+		timespec tim1, tim2;
+		tim1.tv_sec = 0;
+		tim1.tv_nsec = 70000000;
+		nanosleep(&tim1, &tim2);
 	}
 }
 
@@ -281,6 +294,32 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 	while (*running) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(*p);	// Store frame into the Mat
-		m_tagreader->process_Mat(*p, *tagdata);	// Image processing
+		m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
+
+		// Display the tag data
+		werase(tagwin);
+		box(tagwin, 0, 0);
+		mvwprintw(tagwin, 1, 1, "Tags found: %d", tagdata->size());
+		for (int i = 0; i < tagdata->size(); ++i) {
+			mvwprintw(tagwin, i+2, 1, "Tag: %d at (%d, %d)", tagdata->at(i).id,
+					tagdata->at(i).img_x, tagdata->at(i).img_y);
+		}
+
+		if(p->size().width > 0 && p->size().height > 0) {
+			imshow("Camera", *p);
+			waitKey(1);
+		}
+		else {
+			drawFeedback("ERROR: Mat is not valid");
+		}
+	}
+}
+
+// Thread to run the control loop
+void handle_control(bool *running, DroneController *m_controller, 
+		navdata_t* navdata, vector<TagData> *tagdata)
+{
+	while (*running) {
+		m_controller->control_loop(navdata, *tagdata);
 	}
 }
