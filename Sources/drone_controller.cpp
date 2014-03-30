@@ -55,7 +55,7 @@ bool DroneController::init_ports()
 		std::cerr << "Error binding navdata_socket to pc_addr\n";
 		return false;
 	}
-	else std::cout << "Successfully bound navdata_socket\n";
+	//else std::cout << "Successfully bound navdata_socket\n";
 
 	int32_t one = 1;
 	// set unicast mode on

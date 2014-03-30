@@ -74,7 +74,7 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 		TagReader *m_tagreader, vector<TagData> *tagdata);
 
 void initGUI();
-void drawFeedback(char str[]);
+void drawFeedback(const char str[]);
 
 int main()
 {
@@ -99,24 +99,20 @@ int main()
 	// Create the Drone Controller
 	//cout << "Creating DroneController Object...\n";
 	drawFeedback("Creating DroneController object...");
-	drawFeedback("Creating DroneController2 object...");
-	drawFeedback("Creating DroneController3 object...");
-	drawFeedback("Creating DroneController4 object...");
-	drawFeedback("Creating DroneController5 object...");
-	drawFeedback("Creating DroneController6 object...");
-	drawFeedback("Creating DroneController7 object...");
-	drawFeedback("Creating DroneController8 object...");
 	m_controller.init_ports();
 	if (!m_controller.is_connected()) return 1;
 
 	// Create the Video handler
 	//cout << "Creating ARDrone2Video Object\n";
+	drawFeedback("Creating ARDrone2Video object...");
 	Address video_address("192.168.1.1", 5555);	// Address to the drone's video
 	// Connect the handler to the drone
 	m_video.start(video_address);
 
 	// Check if video is connected
 	// If not, continue program without video
+	if (m_video.isStarted()) drawFeedback("Successful in connecting to drone");
+	else { drawFeedback("ERROR: Cout not connect to drone"); return 1; }
 	//if (m_video.isStarted()) cout << "Successful in connecting to drone\n";
 	//else { cerr << "ERROR: Could not connect to drone\n"; return 1; }
 
@@ -158,7 +154,7 @@ int main()
 		// TODO: Probably switch to SDL or other
 		if(p.size().width > 0 && p.size().height > 0) imshow("Camera", p);
 		else {
-		//	cerr << "ERROR: Mat is not valid\n";
+			drawFeedback("ERROR: Mat is not valid");
 			break;
 		}
 		char input = (char) waitKey(1);
@@ -181,18 +177,22 @@ int main()
 	m_controller.control_basic(LAND);
 
 	//cout << "Halting threads\n";
+	drawFeedback("Halting threads");
 	*running = false;
 	//navThread.join();
 	//vidThread.join();
 
 	// close the sockets
 	//cout << "Closing ports\n";
+	drawFeedback("Closing ports");
 	m_controller.close_ports();
 
 	// Halt the video handler
+	drawFeedback("Halting video processor");
 	m_video.end();
 
 	// Memory management
+	drawFeedback("Cleaning up");
 	delete running;
 
 	return 0;
@@ -250,12 +250,14 @@ void initGUI()
 	wrefresh(inputwin);
 }
 
-void drawFeedback(char str[])
+void drawFeedback(const char str[])
 {
+	// TODO: scroll upwards
 	char feedback[80];
 	sprintf(feedback, "$ %s", str);
 	mvwprintw(feedbackwin, feedbackRow, 1, feedback);
-	if (feedbackRow <= 5) ++feedbackRow;
+	if (feedbackRow <= 5) feedbackRow += 1;
+	else feedbackRow = 1;
 	wrefresh(feedbackwin);
 }
 
