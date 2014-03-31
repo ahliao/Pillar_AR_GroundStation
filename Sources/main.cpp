@@ -98,7 +98,6 @@ int main()
 
 	// GUI init
 	initGUI();
-	boost::thread drawThread(redraw, running);
 	
 	// Create the Drone Controller
 	drawFeedback("Creating DroneController object...");
@@ -124,6 +123,7 @@ int main()
 	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
 	boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
 	boost::thread controlThread(handle_control, running, &m_controller, navdata, &tagdata);
+	boost::thread drawThread(redraw, running);
 
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
