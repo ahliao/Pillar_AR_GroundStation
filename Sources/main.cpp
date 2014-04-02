@@ -128,12 +128,55 @@ int main()
 	// TODO: make the control (or video) into another thread
 	// TODO: Found mem leak in zarray.c 23 in calloc
 	char str[80];
+	char command[10];
+	char direction[10];
+	float value = 0, duration = 0;
+	int numargs = 0;
+	timespec tim1, tim2;
 	while(*running) {
 		// Handle control using tagdata and navdata
 		// TODO: Move to another thread
 		wmove(inputwin, 1, 4);
 		wgetstr(inputwin, str);
-		if (!strcmp(str, "exit")) *running = false;
+		numargs = sscanf(str, "%s %s %f %f", command, direction, &value, &duration);
+		if (numargs == 1) {
+			if (!strcmp(command, "exit")) *running = false;
+			else if (!strcmp(command, "led")) m_controller.control_led(1, 2.0, 2);
+			else if (!strcmp(command, "takeoff")) {
+				m_controller.control_basic(TAKEOFF);
+			} else if (!strcmp(command, "land")) {
+				m_controller.control_basic(LAND);
+			} else if (!strcmp(command, "help")) {
+				m_controller.control_basic(EMERGENCY);
+			}
+		} else if (numargs == 4) {
+			// TODO: add to a queue?
+			if (!strcmp(command, "move")) {
+				if (!strcmp(direction, "roll")) {
+					m_controller.control_move(true, value, 0, 0, 0);
+					tim1.tv_sec = 0;
+					tim1.tv_nsec = (long int) (duration * 1000000000);
+					nanosleep(&tim1, &tim2);
+				} else if (!strcmp(direction, "pitch")) {
+					m_controller.control_move(true, 0, value, 0, 0);
+					tim1.tv_sec = 0;
+					tim1.tv_nsec = (long int) (duration * 1000000000);
+					nanosleep(&tim1, &tim2);
+				} else if (!strcmp(direction, "alt")) {
+					m_controller.control_move(true, 0, 0, value, 0);
+					tim1.tv_sec = 0;
+					tim1.tv_nsec = (long int) (duration * 1000000000);
+					nanosleep(&tim1, &tim2);
+				} else if (!strcmp(direction, "yaw")) {
+					m_controller.control_move(true, 0, 0, 0, value);
+					tim1.tv_sec = 0;
+					tim1.tv_nsec = (long int) (duration * 1000000000);
+					nanosleep(&tim1, &tim2);
+				}
+			}
+		}
+		m_controller.control_move(false, 0, 0, 0, 0);
+		
 		werase(inputwin);
 		box(inputwin, 0, 0);
 		mvwprintw(inputwin, 1, 1, ">>");
@@ -156,6 +199,7 @@ int main()
 	}
 	m_controller.control_basic(LAND);
 
+	// Stop all the threads
 	drawFeedback("Halting threads");
 	*running = false;
 	navThread.join();
@@ -300,13 +344,14 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 		werase(tagwin);
 		box(tagwin, 0, 0);
 		mvwprintw(tagwin, 1, 1, "Tags found: %d", tagdata->size());
-		for (int i = 0; i < tagdata->size(); ++i) {
+		for (uint16_t i = 0; i < tagdata->size(); ++i) {
 			mvwprintw(tagwin, i+2, 1, "Tag: %d at (%d, %d)", tagdata->at(i).id,
 					tagdata->at(i).img_x, tagdata->at(i).img_y);
 		}
 
 		if(p->size().width > 0 && p->size().height > 0) {
 			imshow("Camera", *p);
+			// TODO: save the images
 			waitKey(1);
 		}
 		else {
