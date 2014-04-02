@@ -59,6 +59,7 @@ extern "C" {
 
 // Multithreading with the C lib
 #include <boost/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 // GUI Variables
 // Pointers to the NCurses windows
@@ -173,9 +174,7 @@ int main()
 				if (!strcmp(direction, "roll")) {
 					drawFeedback("move roll ...");
 					m_controller.control_move(true, value, 0, 0, 0);
-					tim1.tv_sec = 2;
-					tim1.tv_nsec = (long int) (duration * 1000000000);
-					nanosleep(&tim1, &tim2);
+					boost::this_thread::sleep(boost::posix_time::microseconds(duration * 1000000));
 					m_controller.control_move(false, 0, 0, 0, 0);
 				} else if (!strcmp(direction, "pitch")) {
 					m_controller.control_move(true, 0, value, 0, 0);
