@@ -153,6 +153,18 @@ int main()
 				m_controller.control_move(true, 0, 0, -0.1f, 0);
 			} else if (!strcmp(command, "hover")) {
 				m_controller.control_move(false, 0, 0, 0, 0);
+			} else if (!strcmp(command, "forward")) {
+				m_controller.control_basic(FORWARD);
+			} else if (!strcmp(command, "down")) {
+				m_controller.control_basic(DOWN);
+			} else if (!strcmp(command, "backward")) {
+				m_controller.control_basic(BACKWARD);
+			} else if (!strcmp(command, "up")) {
+				m_controller.control_basic(UP);
+			} else if (!strcmp(command, "left")) {
+				m_controller.control_basic(LEFT);
+			} else if (!strcmp(command, "right")) {
+				m_controller.control_basic(RIGHT);
 			}
 		} else if (numargs == 4) {
 			// TODO: add to a queue?
