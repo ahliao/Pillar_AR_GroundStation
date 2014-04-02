@@ -143,20 +143,28 @@ int main()
 			if (!strcmp(command, "exit")) *running = false;
 			else if (!strcmp(command, "led")) m_controller.control_led(1, 2.0, 2);
 			else if (!strcmp(command, "takeoff")) {
+				m_controller.control_ftrim();
 				m_controller.control_basic(TAKEOFF);
 			} else if (!strcmp(command, "land")) {
 				m_controller.control_basic(LAND);
 			} else if (!strcmp(command, "help")) {
 				m_controller.control_basic(EMERGENCY);
+			} else if (!strcmp(command, "down")) {
+				m_controller.control_move(true, 0, 0, -0.1f, 0);
+			} else if (!strcmp(command, "hover")) {
+				m_controller.control_move(false, 0, 0, 0, 0);
 			}
 		} else if (numargs == 4) {
 			// TODO: add to a queue?
 			if (!strcmp(command, "move")) {
+				drawFeedback("move...");
 				if (!strcmp(direction, "roll")) {
+					drawFeedback("move roll ...");
 					m_controller.control_move(true, value, 0, 0, 0);
-					tim1.tv_sec = 0;
+					tim1.tv_sec = 2;
 					tim1.tv_nsec = (long int) (duration * 1000000000);
 					nanosleep(&tim1, &tim2);
+					m_controller.control_move(false, 0, 0, 0, 0);
 				} else if (!strcmp(direction, "pitch")) {
 					m_controller.control_move(true, 0, value, 0, 0);
 					tim1.tv_sec = 0;
@@ -175,7 +183,6 @@ int main()
 				}
 			}
 		}
-		m_controller.control_move(false, 0, 0, 0, 0);
 		
 		werase(inputwin);
 		box(inputwin, 0, 0);
