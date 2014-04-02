@@ -214,7 +214,43 @@ void DroneController::control_basic(ControlBasic cmd)
 		m &= ~(1 << 9);
 		m &= ~(1 << 8);
 	}
-	else if (cmd == EMERGENCY) m |= (1 << 8);
+	else if (cmd == EMERGENCY){ m |= (1 << 8);}
+	else if(cmd == FORWARD) 
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
+	else if(cmd == BACKWARD)
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
+	else if(cmd == LEFT) 
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
+	else if(cmd == RIGHT) 
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
+	else if(cmd == UP) 
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
+	else if(cmd == DOWN) 
+	{
+	    control_move(false, 0, 0, 0, 0);
+		m &= ~(1 << 9);
+		m &= ~(1 << 8);
+	}
 	sprintf(command, "AT*REF=%d,%d\r", seq, m);
 	send_drone_command(command);
 }

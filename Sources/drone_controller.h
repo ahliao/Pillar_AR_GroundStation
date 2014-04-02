@@ -38,7 +38,13 @@ enum NavdataOptions {
 enum ControlBasic {
 	TAKEOFF,
 	LAND, 
-	EMERGENCY
+	EMERGENCY,
+	FORWARD,
+	BACKWARD,
+	LEFT,
+	RIGHT,
+	UP,
+	DOWN
 };
 
 enum VideoChannel {
