@@ -418,23 +418,28 @@ void handle_control(bool *running, DroneController *m_controller,
 		} 
 
 		if (lasttagy > 180) { // tag is down, so go down (back)
-			controly = 0.05f;
+			controly = (lasttagy - 180) / 10000;
+			//controly = 0.02f;
 		} else if (lasttagy < 180) {	// tag is up, go forward
-			controly = -0.05f;
+			controly = -(lasttagy - 180) / 10000;
+			//controly = -0.02f;
 		} else {
 			controly = 0.0f;
 		}
 		if (lasttagx > 320) { // tag is right, so go right)
-			controlx = 0.05f;
+			controlx = (lasttagx - 320) / 10000;
+			//controlx = 0.02f;
 		} else if (lasttagx < 320) {	// tag is left, go left 
-			controlx = -0.05f;
+			controlx = -(lasttagx - 320) / 10000;
+			//controlx = -0.02f;
 		} else {
 			controlx = 0.0f;
 		}
-		//if (controly != 0.0f || controlx != 0.0f) {
+		if (controly != 0.0f || controlx != 0.0f) {
 			m_controller->control_move(true, controlx, controly, 0, 0);
-			boost::this_thread::sleep(boost::posix_time::microseconds(1000)); // delay for 0.01 seconds
-		//}
+			boost::this_thread::sleep(boost::posix_time::microseconds(50000)); // delay for 0.01 seconds
+			//m_controller->control_move(false, 0, 0, 0, 0);
+		}
 
 
 		if (*cmdsent) {
