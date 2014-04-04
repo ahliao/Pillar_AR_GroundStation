@@ -74,7 +74,8 @@ void get_navdata(bool* running, DroneController *m_controller, navdata_t** navda
 void get_video(bool *running, ARDrone2Video *m_video, Mat* p, 
 		TagReader *m_tagreader, vector<TagData> *tagdata);
 void handle_control(bool *running, DroneController *m_controller, 
-		navdata_t* navdata, vector<TagData> *tagdata);
+		navdata_t* navdata, vector<TagData> *tagdata, 
+		bool *cmdsent, timeval *currtime, float *cmdduration);
 
 void redraw(bool* running);
 void initGUI();
@@ -82,7 +83,7 @@ void drawFeedback(const char str[]);
 
 int main()
 {
-	freopen("/dev/null", "r", stderr); 
+	//freopen("/dev/null", "r", stderr); 
 
 	DroneController m_controller;
 	Mat p;	// Mat to store video frame  (Takes up a ton of memory)
@@ -90,6 +91,13 @@ int main()
 	TagReader m_tagreader;
 	vector<TagData> tagdata;
 	navdata_t* navdata = 0;
+
+	// Time that a command was sent
+	timeval timecmdsent;
+	// true if a command was send and still needs to be finished
+	bool cmdsent = false;
+	// duration the command sent should be sent
+	float cmdduration = 0.0f;
 
 	bool* running = new bool(true);
 
@@ -123,7 +131,8 @@ int main()
 	drawFeedback("Starting threads...");
 	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
 	boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
-	boost::thread controlThread(handle_control, running, &m_controller, navdata, &tagdata);
+	boost::thread controlThread(handle_control, running, &m_controller, navdata,
+		   &tagdata, &cmdsent, &timecmdsent, &cmdduration);
 	boost::thread drawThread(redraw, running);
 
 	// TODO: make the control (or video) into another thread
@@ -169,28 +178,31 @@ int main()
 			}
 		} else if (numargs == 4) {
 			// TODO: add to a queue?
-			if (!strcmp(command, "move")) {
+			if (!strcmp(command, "move") && !cmdsent) {
 				drawFeedback("move...");
 				if (!strcmp(direction, "roll")) {
 					drawFeedback("move roll ...");
 					m_controller.control_move(true, value, 0, 0, 0);
-					boost::this_thread::sleep(boost::posix_time::microseconds(duration * 1000000));
-					m_controller.control_move(false, 0, 0, 0, 0);
+					cmdsent = true;
+					gettimeofday(&timecmdsent, NULL);
+					cmdduration = duration;
+					//boost::this_thread::sleep(boost::posix_time::microseconds(duration * 1000000));
+					//m_controller.control_move(false, 0, 0, 0, 0);
 				} else if (!strcmp(direction, "pitch")) {
 					m_controller.control_move(true, 0, value, 0, 0);
-					tim1.tv_sec = 0;
-					tim1.tv_nsec = (long int) (duration * 1000000000);
-					nanosleep(&tim1, &tim2);
+					cmdsent = true;
+					gettimeofday(&timecmdsent, NULL);
+					cmdduration = duration;
 				} else if (!strcmp(direction, "alt")) {
 					m_controller.control_move(true, 0, 0, value, 0);
-					tim1.tv_sec = 0;
-					tim1.tv_nsec = (long int) (duration * 1000000000);
-					nanosleep(&tim1, &tim2);
+					cmdsent = true;
+					gettimeofday(&timecmdsent, NULL);
+					cmdduration = duration;
 				} else if (!strcmp(direction, "yaw")) {
 					m_controller.control_move(true, 0, 0, 0, value);
-					tim1.tv_sec = 0;
-					tim1.tv_nsec = (long int) (duration * 1000000000);
-					nanosleep(&tim1, &tim2);
+					cmdsent = true;
+					gettimeofday(&timecmdsent, NULL);
+					cmdduration = duration;
 				}
 			}
 		}
@@ -356,7 +368,7 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 	while (*running) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(*p);	// Store frame into the Mat
-		m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
+		//m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
 
 		// Display the tag data
 		werase(tagwin);
@@ -380,9 +392,23 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 
 // Thread to run the control loop
 void handle_control(bool *running, DroneController *m_controller, 
-		navdata_t* navdata, vector<TagData> *tagdata)
+		navdata_t* navdata, vector<TagData> *tagdata, 
+		bool *cmdsent, timeval *timecmdsent, float *cmdduration)
 {
+	long int timediff = 0;
+	timeval currtime;
 	while (*running) {
 		m_controller->control_loop(navdata, *tagdata);
+
+		if (*cmdsent) {
+			gettimeofday(&currtime, NULL);
+			timediff = (currtime.tv_sec  - timecmdsent->tv_sec) * 1000000 + 
+				(currtime.tv_usec - timecmdsent->tv_usec);
+			if (timediff >= *cmdduration * 1000000) {
+				//m_controller->control_move(false, 0, 0, 0, 0);
+				m_controller->control_move(true, 0, 0, 0, 0);
+				*cmdsent = false;
+			}
+		}
 	}
 }
