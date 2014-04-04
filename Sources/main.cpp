@@ -83,7 +83,7 @@ void drawFeedback(const char str[]);
 
 int main()
 {
-	//freopen("/dev/null", "r", stderr); 
+	freopen("/dev/null", "r", stderr); 
 
 	DroneController m_controller;
 	Mat p;	// Mat to store video frame  (Takes up a ton of memory)
@@ -129,10 +129,10 @@ int main()
 
 	// Create the thread to retreive navdata
 	drawFeedback("Starting threads...");
-	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
 	boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
 	boost::thread controlThread(handle_control, running, &m_controller, navdata,
 		   &tagdata, &cmdsent, &timecmdsent, &cmdduration);
+	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
 	boost::thread drawThread(redraw, running);
 
 	// TODO: make the control (or video) into another thread
@@ -144,6 +144,13 @@ int main()
 	int numargs = 0;
 	timespec tim1, tim2;
 	while(*running) {
+		/*m_video.fetch();			// Decode the frame
+		m_video.latestImage(p);	// Store frame into the Mat
+		//m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
+		imshow("Camera", p);
+		waitKey(1);
+		m_controller.reset_comm_watchdog();*/
+
 		// Handle control using tagdata and navdata
 		// TODO: Move to another thread
 		wmove(inputwin, 1, 4);
@@ -343,6 +350,7 @@ void get_navdata(bool* running, DroneController *m_controller, navdata_t** navda
 		mvwprintw(navwin, 9, 1, "Pitch: %f", nav_demo->pitch);
 		mvwprintw(navwin, 10, 1, "Roll:  %f", nav_demo->roll);
 		mvwprintw(navwin, 11, 1, "Yaw:   %f", nav_demo->yaw);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100));
 	}
 }
 
@@ -354,10 +362,7 @@ void redraw(bool* running)
 		wrefresh(feedbackwin);
 		wrefresh(tagwin);
 
-		timespec tim1, tim2;
-		tim1.tv_sec = 0;
-		tim1.tv_nsec = 70000000;
-		nanosleep(&tim1, &tim2);
+		boost::this_thread::sleep(boost::posix_time::microseconds(70000));
 	}
 }
 
@@ -368,7 +373,7 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 	while (*running) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(*p);	// Store frame into the Mat
-		//m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
+		m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
 
 		// Display the tag data
 		werase(tagwin);
@@ -396,19 +401,52 @@ void handle_control(bool *running, DroneController *m_controller,
 		bool *cmdsent, timeval *timecmdsent, float *cmdduration)
 {
 	long int timediff = 0;
-	timeval currtime;
+	timeval currtime, localcmd;
+
+	// Hovering over one tag stuff
+	int lasttagx = 360;	// the x and y of the last seen tag
+	int lasttagy = 180;
+	float controly = 0;
+	float controlx = 0;
 	while (*running) {
 		m_controller->control_loop(navdata, *tagdata);
+
+		if (tagdata->size() > 0) {
+			TagData tag = tagdata->at(0);
+			lasttagx = tag.img_x;
+			lasttagy = tag.img_y;
+		} 
+
+		if (lasttagy > 180) { // tag is down, so go down (back)
+			controly = 0.05f;
+		} else if (lasttagy < 180) {	// tag is up, go forward
+			controly = -0.05f;
+		} else {
+			controly = 0.0f;
+		}
+		if (lasttagx > 320) { // tag is right, so go right)
+			controlx = 0.05f;
+		} else if (lasttagx < 320) {	// tag is left, go left 
+			controlx = -0.05f;
+		} else {
+			controlx = 0.0f;
+		}
+		//if (controly != 0.0f || controlx != 0.0f) {
+			m_controller->control_move(true, controlx, controly, 0, 0);
+			boost::this_thread::sleep(boost::posix_time::microseconds(1000)); // delay for 0.01 seconds
+		//}
+
 
 		if (*cmdsent) {
 			gettimeofday(&currtime, NULL);
 			timediff = (currtime.tv_sec  - timecmdsent->tv_sec) * 1000000 + 
 				(currtime.tv_usec - timecmdsent->tv_usec);
 			if (timediff >= *cmdduration * 1000000) {
-				//m_controller->control_move(false, 0, 0, 0, 0);
-				m_controller->control_move(true, 0, 0, 0, 0);
+				m_controller->control_move(false, 0, 0, 0, 0);
+				//m_controller->control_move(true, 0, 0, 0, 0);
 				*cmdsent = false;
 			}
 		}
+		boost::this_thread::sleep(boost::posix_time::microseconds(1000));
 	}
 }
