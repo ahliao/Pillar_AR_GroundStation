@@ -404,7 +404,7 @@ void handle_control(bool *running, DroneController *m_controller,
 	timeval currtime, localcmd;
 
 	// Hovering over one tag stuff
-	int lasttagx = 360;	// the x and y of the last seen tag
+	int lasttagx = 320;	// the x and y of the last seen tag
 	int lasttagy = 180;
 	float controly = 0;
 	float controlx = 0;
@@ -416,29 +416,32 @@ void handle_control(bool *running, DroneController *m_controller,
 			lasttagx = tag.img_x;
 			lasttagy = tag.img_y;
 		} 
+		mvwprintw(tagwin, 6, 1, "Last Tag: (%d, %d)", tag.img_x, tag.img_y);
 
 		if (lasttagy > 180) { // tag is down, so go down (back)
-			controly = (lasttagy - 180) / 10000;
+			controly = (lasttagy - 180) / 25000.0f;
 			//controly = 0.02f;
 		} else if (lasttagy < 180) {	// tag is up, go forward
-			controly = -(lasttagy - 180) / 10000;
+			controly = (lasttagy - 180) / 25000.0f;
 			//controly = -0.02f;
 		} else {
 			controly = 0.0f;
 		}
 		if (lasttagx > 320) { // tag is right, so go right)
-			controlx = (lasttagx - 320) / 10000;
+			controlx = (lasttagx - 320) / 25000.0f;
 			//controlx = 0.02f;
 		} else if (lasttagx < 320) {	// tag is left, go left 
-			controlx = -(lasttagx - 320) / 10000;
+			controlx = (lasttagx - 320) / 25000.0f;
 			//controlx = -0.02f;
 		} else {
 			controlx = 0.0f;
 		}
 		if (controly != 0.0f || controlx != 0.0f) {
 			m_controller->control_move(true, controlx, controly, 0, 0);
-			boost::this_thread::sleep(boost::posix_time::microseconds(50000)); // delay for 0.01 seconds
+			//m_controller->control_move(true, controlx, 0, 0, 0);
+			boost::this_thread::sleep(boost::posix_time::microseconds(100000)); // delay for 0.01 seconds
 			//m_controller->control_move(false, 0, 0, 0, 0);
+			m_controller->control_move(true, 0, 0, 0, 0);
 		}
 
 
