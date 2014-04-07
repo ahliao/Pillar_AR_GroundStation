@@ -121,66 +121,6 @@ void DroneController::control_loop(const navdata_t *const navdata, const std::ve
 		gettimeofday(&takeoff_time, NULL);
 	}
 
-	else if (flying && tagdata.size() > 0) {
-		for (uint8_t i = 0; i < tagdata.size(); ++i) {
-			TagData tag1 = tagdata.at(i);
-			std::cout << "Tag ID: " << tag1.id << std::endl;
-			std::cout << "Tag Pos: " << i << "(" << tag1.img_x << ", " << tag1.img_y 
-			   << ")" << std::endl;
-		}
-		TagData tag = tagdata.at(0);
-
-		//int goal_x = 0;
-		//int goal_y = 0;
-		//float pixel_scale = 8.0f / tag.side_length; // cm per px
-		//int curr_x = 0;
-		//int curr_y = 0;
-
-		curr_x = (tag.id % GRID_COL)*GRID_STEP + 
-			(frame_mid_x - tag.rel_x)*pixel_scale;
-		curr_y = (tag.id % GRID_ROW)*GRID_STEP + 
-			(frame_mid_y - tag.rel_y)*pixel_scale;
-		curr_x = (int)((tag.id % GRID_COL)*GRID_STEP + 
-			((float)frame_mid_x - tag.rel_x));
-		curr_y = (int)((tag.id % GRID_ROW)*GRID_STEP + 
-			((float)frame_mid_y - tag.rel_y));
-
-		// This should hover over a certain tag
-
-		// Gain Kp
-		float Kp = 5.0;
-
-		// rel_x and rel_y are currently the difference (relative pos)
-
-		//int error_x = goal_x - curr_x;
-		//int error_y = goal_y - curr_y;
-		float error_x = -(float)(tag.img_x - frame_mid_x);
-		float error_y = (float)(tag.img_y - frame_mid_y);
-		float error_yaw = tag.angle;
-		std::cout << "Error_x: " << error_x << std::endl;
-		std::cout << "Error_y: " << error_y << std::endl;
-
-		float angle_x = (Kp * error_x) / 2048.0f;
-		float angle_y = (Kp * error_y) / 2048.0f;
-//		angle_x = 0;
-//		angle_y = 0;
-		float ang_vel = (Kp * error_yaw) / 2.0f;
-
-		// handle clipping
-		if (angle_x > 1.0f) angle_x = 1.0f;
-		else if (angle_x < -1.0f) angle_x = -1.0f;
-		if (angle_y > 1.0f) angle_y = 1.0f;
-		else if (angle_y < -1.0f) angle_y = -1.0f;
-		if (ang_vel > 1.0f) ang_vel = 1.0f;
-		else if (ang_vel < -1.0f) ang_vel = -1.0f;
-		std::cout << "angle_y: " << angle_y << std::endl;
-
-		control_move(true, 0, angle_y, 0, 0);
-//		control_move(true, 0, 0, 0.0, ang_vel);
-
-	} else {
-		control_move(false, 0, 0, 0.10f, 0);
-	}
 
 	// Land if flight time is over 10 seconds
 	gettimeofday(&curr_time, NULL);

@@ -40,7 +40,7 @@ TagReader::TagReader()
 	td->nthreads = 4;
 	td->seg_sigma = 0.8;
 	td->min_mag = 0;
-	td->seg_decimate = 3; // stops the lag spikes
+	td->seg_decimate = 2; // stops the lag spikes
 	// Set to 1 for better detection but slower rate
 }
 

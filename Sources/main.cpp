@@ -74,7 +74,7 @@ void get_navdata(bool* running, DroneController *m_controller, navdata_t** navda
 void get_video(bool *running, ARDrone2Video *m_video, Mat* p, 
 		TagReader *m_tagreader, vector<TagData> *tagdata);
 void handle_control(bool *running, DroneController *m_controller, 
-		navdata_t* navdata, vector<TagData> *tagdata, 
+		navdata_t** navdata, vector<TagData> *tagdata, 
 		bool *cmdsent, timeval *currtime, float *cmdduration);
 
 void redraw(bool* running);
@@ -111,6 +111,7 @@ int main()
 	// Create the Drone Controller
 	drawFeedback("Creating DroneController object...");
 	m_controller.init_ports();
+	m_controller.default_config();
 	if (!m_controller.is_connected()) return 1;
 
 	// Create the Video handler
@@ -130,7 +131,7 @@ int main()
 	// Create the thread to retreive navdata
 	drawFeedback("Starting threads...");
 	boost::thread vidThread(get_video, running, &m_video, &p, &m_tagreader, &tagdata);
-	boost::thread controlThread(handle_control, running, &m_controller, navdata,
+	boost::thread controlThread(handle_control, running, &m_controller, &navdata,
 		   &tagdata, &cmdsent, &timecmdsent, &cmdduration);
 	boost::thread navThread(get_navdata, running, &m_controller, &navdata);
 	boost::thread drawThread(redraw, running);
@@ -143,6 +144,11 @@ int main()
 	float value = 0, duration = 0;
 	int numargs = 0;
 	timespec tim1, tim2;
+
+	int lasttagx = 320;	// the x and y of the last seen tag
+	int lasttagy = 180;
+	float controly = 0, controlx = 0, controlz = 0; // ctr signals
+
 	while(*running) {
 		/*m_video.fetch();			// Decode the frame
 		m_video.latestImage(p);	// Store frame into the Mat
@@ -182,6 +188,30 @@ int main()
 				m_controller.control_basic(LEFT);
 			} else if (!strcmp(command, "right")) {
 				m_controller.control_basic(RIGHT);
+			} else if (!strcmp(command, "n")) {
+				if (tagdata.size() > 0) {
+					TagData tag = tagdata.at(0);	// get the first tag
+					lasttagx = tag.img_x;
+					lasttagy = tag.img_y;
+				}
+				if (lasttagx > 320) {	// tag is to the right: go right
+					controlx = 0.05f;
+				} else if (lasttagx < 320) { // tag is to the left: go left
+					controlx = -0.05f;
+				} else {
+					controlx = 0.0f;
+				}
+				if (lasttagy > 180) {	// tag is down, go down
+					controly = 0.05f;
+				} else if (lasttagy < 180) { // tag is up: go up
+					controly = -0.05f;
+				} else {
+					controly = 0.0f;
+				}
+				m_controller.control_move(true, controlx, controly, 0, 0);
+				cmdsent = true;
+				gettimeofday(&timecmdsent, NULL);
+				cmdduration = 0.1f;
 			}
 		} else if (numargs == 4) {
 			// TODO: add to a queue?
@@ -193,8 +223,6 @@ int main()
 					cmdsent = true;
 					gettimeofday(&timecmdsent, NULL);
 					cmdduration = duration;
-					//boost::this_thread::sleep(boost::posix_time::microseconds(duration * 1000000));
-					//m_controller.control_move(false, 0, 0, 0, 0);
 				} else if (!strcmp(direction, "pitch")) {
 					m_controller.control_move(true, 0, value, 0, 0);
 					cmdsent = true;
@@ -361,6 +389,7 @@ void redraw(bool* running)
 		wrefresh(navwin);
 		wrefresh(feedbackwin);
 		wrefresh(tagwin);
+		wrefresh(mapwin);
 
 		boost::this_thread::sleep(boost::posix_time::microseconds(70000));
 	}
@@ -397,33 +426,52 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 
 // Thread to run the control loop
 void handle_control(bool *running, DroneController *m_controller, 
-		navdata_t* navdata, vector<TagData> *tagdata, 
+		navdata_t** navdata, vector<TagData> *tagdata, 
 		bool *cmdsent, timeval *timecmdsent, float *cmdduration)
 {
 	long int timediff = 0;
 	timeval currtime, localcmd;
 
 	// Hovering over one tag stuff
-	int lasttagx = 320;	// the x and y of the last seen tag
+	/*int lasttagx = 320;	// the x and y of the last seen tag
 	int lasttagy = 180;
-	float controly = 0;
-	float controlx = 0;
+	float controly = 0, controlx = 0, controlz = 0;
+	float errory = 0, errorx = 0;
+	float preerrory = 0, preerrorx = 0;
+	float scaleKx = 1.0f / 7000.0f;
+	float scaleKy = 1.0f / 14000.0f;
+	float Kp = 1.0f;
+	float Ki = 0.00f;
+	float Kd = 0.00f;
+	float integraly = 0.0f, integralx = 0.0f;
+	float derivativey = 0.0f, derivativex = 0.0f;
+	float deltaT = 0.030f; // 30 msec*/
 	while (*running) {
-		m_controller->control_loop(navdata, *tagdata);
+		m_controller->control_loop(*navdata, *tagdata);
 
-		if (tagdata->size() > 0) {
+		// Notes for velocity PID controller
+		// To move, the drone needs to set an angle
+		// This angle changes the forces on the drone
+		// Keeping this angle therefore accelerates the drone
+		// So we need to move the drone based on it's
+		// current velocity 
+		// angle -> acceleration -> velocity -> position
+
+		/*if (tagdata->size() > 0) {
 			TagData tag = tagdata->at(0);
 			lasttagx = tag.img_x;
 			lasttagy = tag.img_y;
 		} 
-		mvwprintw(tagwin, 6, 1, "Last Tag: (%d, %d)", tag.img_x, tag.img_y);
+		mvwprintw(tagwin, 6, 1, "Last Tag: (%d, %d)", lasttagx, lasttagy);*/
 
-		if (lasttagy > 180) { // tag is down, so go down (back)
-			controly = (lasttagy - 180) / 25000.0f;
-			//controly = 0.02f;
+		/*if (lasttagy > 180) { // tag is down, so go down (back)
+			//controly = (lasttagy - 180) / 25000.0f;
+			//errory = (lasttagy - 180) / 25000.0f;
+			controly = 0.01f;
 		} else if (lasttagy < 180) {	// tag is up, go forward
-			controly = (lasttagy - 180) / 25000.0f;
-			//controly = -0.02f;
+			//controly = (lasttagy - 180) / 25000.0f;
+			//errory = (lasttagy - 180) / 25000.0f;
+			controly = -0.01f;
 		} else {
 			controly = 0.0f;
 		}
@@ -435,23 +483,55 @@ void handle_control(bool *running, DroneController *m_controller,
 			//controlx = -0.02f;
 		} else {
 			controlx = 0.0f;
+		}*/
+		//if (nav_demo->altitude < 1000) controlz = 0.1;
+		//else controlz = 0;
+		/*errory = ((float)lasttagy - 180.0f);
+		errorx = ((float)lasttagx - 320.0f);
+		integraly = integraly + errory * deltaT;
+		integralx = integralx + errorx * deltaT;
+		derivativex = (errorx - preerrorx) / deltaT;
+		derivativey = (errory - preerrory) / deltaT;
+		controly = (scaleKy) * (errory * Kp + integraly * Ki + 
+				derivativey * Kd);
+		controlx = (scaleKx) * (errorx * Kp + integralx * Ki + 
+				derivativex * Kd);
+		if (navdata != 0 && *navdata != 0) {
+			navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
+			if (nav_demo->velocity._0 > 0) --lasttagx;
+			else if (nav_demo->velocity._0 < 0) ++lasttagx;
+			if (nav_demo->velocity._1 > 0) --lasttagy;
+			else if (nav_demo->velocity._1 < 0) ++lasttagy;
+			mvwprintw(mapwin, 5, 1, "Alt: z = %d", nav_demo->altitude);
+			if (nav_demo->altitude < 850)
+				controlz = 0.7f;
+			else controlz = 0.0f;
+		} else {
+			mvwprintw(mapwin, 5, 1, "Alt: z = N/A");
+			controlz = 0.0f;
 		}
-		if (controly != 0.0f || controlx != 0.0f) {
-			m_controller->control_move(true, controlx, controly, 0, 0);
-			//m_controller->control_move(true, controlx, 0, 0, 0);
-			boost::this_thread::sleep(boost::posix_time::microseconds(100000)); // delay for 0.01 seconds
+		if (controly != 0.0f || controlx != 0.0f || controlz != 0.0f) {
+			m_controller->control_move(true, controlx, controly, controlz, 0);
+			//m_controller->control_move(true, 0, controly, 0, 0);
+			mvwprintw(tagwin, 8, 1, "Control Sig: x = %f, y = %f)", controlx, controly);
+			//boost::this_thread::sleep(boost::posix_time::microseconds(100000)); // delay for 0.01 seconds
+			boost::this_thread::sleep(boost::posix_time::microseconds((int64_t)(deltaT * 1000000))); // delay for 0.01 seconds
 			//m_controller->control_move(false, 0, 0, 0, 0);
 			m_controller->control_move(true, 0, 0, 0, 0);
-		}
+		}*/
 
+		// TODO: velocity PID 
+		// Need to consider the the velocity doesn't go to 0 with control sig is 0
+		// So revise this to only "tap" the drone in a velocity
 
+		// Handle timing of user inputted commands
 		if (*cmdsent) {
 			gettimeofday(&currtime, NULL);
 			timediff = (currtime.tv_sec  - timecmdsent->tv_sec) * 1000000 + 
 				(currtime.tv_usec - timecmdsent->tv_usec);
 			if (timediff >= *cmdduration * 1000000) {
-				m_controller->control_move(false, 0, 0, 0, 0);
-				//m_controller->control_move(true, 0, 0, 0, 0);
+				//m_controller->control_move(false, 0, 0, 0, 0);
+				m_controller->control_move(true, 0, 0, 0, 0);
 				*cmdsent = false;
 			}
 		}
