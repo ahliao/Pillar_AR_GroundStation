@@ -18,11 +18,16 @@ extern "C" {
 #endif
 
 // The number of rows and cols in the map matrix
-int map_length = 1;
+int map_length = 3;
 
 // The spacing between each tag (x and y spacings are the same)
-// Unit of measurement: meters
-float map_tag_spacing = 1; // Default is 1 meter
+// Unit of measurement: centimeters
+float map_tag_spacing = 250; // Default is 1 meter 
+// 280 -> 10 inches apart 
+// TODO: make it so that the relative position is based on the
+// altitude also
+
+// 180 works for side to side
 
 // Constructor
 TagReader::TagReader()
@@ -207,8 +212,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data, cv::
 		//		det->id, det->hamming, det->goodness);
 
 		// Get the coordinates based on the id detected
-		//rel_x = det->id % map_length * map_tag_spacing;
-		//rel_y = det->id / map_length * map_tag_spacing;
+		rel_x = det->id % map_length * map_tag_spacing;
+		rel_y = det->id / map_length * map_tag_spacing;
 
 		// get the four corners
 		// Find the angle between the lines
@@ -288,8 +293,8 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data, cv::
 		//y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
-		//x_ab = x_d + rel_x;
-		//y_ab = y_d + rel_y;
+		x_d = x_d + rel_x;
+		y_d = y_d + rel_y;
 
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;

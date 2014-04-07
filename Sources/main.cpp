@@ -195,23 +195,23 @@ int main()
 					lasttagy = tag.img_y;
 				}
 				if (lasttagx > 320) {	// tag is to the right: go right
-					controlx = 0.05f;
+					controlx = 0.15f;
 				} else if (lasttagx < 320) { // tag is to the left: go left
-					controlx = -0.05f;
+					controlx = -0.15f;
 				} else {
 					controlx = 0.0f;
 				}
 				if (lasttagy > 180) {	// tag is down, go down
-					controly = 0.05f;
+					controly = 0.15f;
 				} else if (lasttagy < 180) { // tag is up: go up
-					controly = -0.05f;
+					controly = -0.15f;
 				} else {
 					controly = 0.0f;
 				}
 				m_controller.control_move(true, controlx, controly, 0, 0);
 				cmdsent = true;
 				gettimeofday(&timecmdsent, NULL);
-				cmdduration = 0.1f;
+				cmdduration = 0.2f;
 			}
 		} else if (numargs == 4) {
 			// TODO: add to a queue?
@@ -409,8 +409,8 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 		box(tagwin, 0, 0);
 		mvwprintw(tagwin, 1, 1, "Tags found: %d", tagdata->size());
 		for (uint16_t i = 0; i < tagdata->size(); ++i) {
-			mvwprintw(tagwin, i+2, 1, "Tag: %d at (%d, %d)", tagdata->at(i).id,
-					tagdata->at(i).img_x, tagdata->at(i).img_y);
+			mvwprintw(tagwin, i+2, 1, "Tag: %d at (%f, %f)", tagdata->at(i).id,
+					tagdata->at(i).rel_x, tagdata->at(i).rel_y);
 		}
 
 		if(p->size().width > 0 && p->size().height > 0) {
@@ -431,12 +431,19 @@ void handle_control(bool *running, DroneController *m_controller,
 {
 	long int timediff = 0;
 	timeval currtime, localcmd;
+	gettimeofday(&localcmd, NULL);
 
 	// Hovering over one tag stuff
-	/*int lasttagx = 320;	// the x and y of the last seen tag
+	int lasttagx = 320;	// the x and y of the last seen tag
 	int lasttagy = 180;
+	// The relative position of the drone
+	// using 3x3 grid with id=4 in the middle
+	TagData tag;	// get the first tag
+	float sumx = 0.0f, sumy = 0.0f;
+	float rel_posx = 250;	// over tag 4
+	float rel_posy = 250;
 	float controly = 0, controlx = 0, controlz = 0;
-	float errory = 0, errorx = 0;
+	/*float errory = 0, errorx = 0;
 	float preerrory = 0, preerrorx = 0;
 	float scaleKx = 1.0f / 7000.0f;
 	float scaleKy = 1.0f / 14000.0f;
@@ -454,8 +461,41 @@ void handle_control(bool *running, DroneController *m_controller,
 		// This angle changes the forces on the drone
 		// Keeping this angle therefore accelerates the drone
 		// So we need to move the drone based on it's
-		// current velocity 
+		// current velocity/can't keep an angle else go to fast
 		// angle -> acceleration -> velocity -> position
+
+		// Hover Control
+		// We want a desired position: 
+		//		tag to be at (320, 180)
+		// We want to get there in say 10 seconds
+		//		Velocity = distance / time;
+		// BUT: we need to have a negative acceleration 
+		//		so we don't overshoot
+		// Need to get to an initial velocity
+		//		Then decrease velocity as desired position gets closer
+		// To make it easier, we will focus on the velocity
+		// 		and just relate acceleration with the angle
+		//		as filtering the raw acceleration data can be time-consuming
+
+		// Time = 10 sec;
+		// X = lasttagx - 320;
+		// X1 = X/10;
+		// Vi = X1 / 1 sec;
+		// Set Acc = -Vi / time;
+
+		// 1st part: Go to velocity
+		// Desired V = set to an angle and then go to flat when velocity met
+		// For now set Vi to a small number
+		// And start the deacceleration based on below
+		// Vi = X / 11 sec;
+		
+		// 2nd part: At start velocity
+		// Desired A = -Vi / time;
+		// Initial V = A * time;
+
+		// Steps:
+		// 1. Get the tag position
+		// 2. 
 
 		/*if (tagdata->size() > 0) {
 			TagData tag = tagdata->at(0);
@@ -524,14 +564,97 @@ void handle_control(bool *running, DroneController *m_controller,
 		// Need to consider the the velocity doesn't go to 0 with control sig is 0
 		// So revise this to only "tap" the drone in a velocity
 
+		// Run this every 2 seconds
+		/*gettimeofday(&currtime, NULL);
+		timediff = (currtime.tv_sec  - localcmd.tv_sec) * 1000000 + 
+			(currtime.tv_usec - localcmd.tv_usec);
+		if (timediff > 200000) {
+			if (tagdata->size() > 0) {
+				TagData tag = tagdata->at(0);	// get the first tag
+				lasttagx = tag.img_x;
+				lasttagy = tag.img_y;
+			} if (lasttagx > 320) {	// tag is to the right: go right
+				controlx = 0.10f;
+			} else if (lasttagx < 320) { // tag is to the left: go left
+				controlx = -0.10f;
+			} else {
+				controlx = 0.0f;
+			}
+			if (lasttagy > 180) {	// tag is down, go down
+				controly = 0.08f;
+			} else if (lasttagy < 180) { // tag is up: go up
+				controly = -0.08f;
+			} else {
+				controly = 0.0f;
+			}
+			if (navdata != 0 && *navdata != 0) {
+				navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
+				if (nav_demo->altitude < 800)
+					controlz = 0.7f;
+				else controlz = 0.0f;
+			}
+			//m_controller->control_move(true, controlx, controly, controlz, 0);
+			*cmdsent = true;
+			gettimeofday(&localcmd, NULL);
+			gettimeofday(timecmdsent, NULL);
+			*cmdduration = 0.10f;
+		}*/
+
+		// Run this every 2 seconds
+		gettimeofday(&currtime, NULL);
+		timediff = (currtime.tv_sec  - localcmd.tv_sec) * 1000000 + 
+			(currtime.tv_usec - localcmd.tv_usec);
+		if (timediff > 150000) {
+			/*if (tagdata->size() > 0) { // just take the first tag for now
+				TagData tag = tagdata->at(0);	// get the first tag
+				rel_posx = tag.rel_x;
+				rel_posy = tag.rel_y;
+			}*/
+			if (tagdata->size() > 0) {
+				sumx = 0;
+				sumy = 0;
+				for (int i = 0; i < tagdata->size(); ++i) {
+					tag = tagdata->at(0);
+					sumx += tag.rel_x;
+					sumy += tag.rel_y;
+				}
+				rel_posx = sumx / tagdata->size();
+				rel_posy = sumy / tagdata->size();
+			} 
+		   	if (rel_posx > 250) {	// tag is to the right: go right
+				controlx = -0.08f;
+			} else if (rel_posx < 250) { // tag is to the left: go left
+				controlx = 0.08f;
+			} else {
+				controlx = 0.0f;
+			}
+			if (rel_posy > 250) {	// tag is down, go down
+				controly = 0.13f;
+			} else if (rel_posy < 250) { // tag is up: go up
+				controly = -0.13f;
+			} else {
+				controly = 0.0f;
+			}
+			if (navdata != 0 && *navdata != 0) {
+				navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
+				if (nav_demo->altitude < 800)
+					controlz = 0.0f;
+				else controlz = 0.0f;
+			}
+			m_controller->control_move(true, controlx, controly, controlz, 0);
+			*cmdsent = true;
+			gettimeofday(&localcmd, NULL);
+			gettimeofday(timecmdsent, NULL);
+			*cmdduration = 0.100f;
+		}
+
 		// Handle timing of user inputted commands
 		if (*cmdsent) {
-			gettimeofday(&currtime, NULL);
 			timediff = (currtime.tv_sec  - timecmdsent->tv_sec) * 1000000 + 
 				(currtime.tv_usec - timecmdsent->tv_usec);
 			if (timediff >= *cmdduration * 1000000) {
-				//m_controller->control_move(false, 0, 0, 0, 0);
-				m_controller->control_move(true, 0, 0, 0, 0);
+				m_controller->control_move(false, 0, 0, 0, 0);
+				//m_controller->control_move(true, 0, 0, 0, 0);
 				*cmdsent = false;
 			}
 		}
