@@ -18,14 +18,14 @@ extern "C" {
 #endif
 
 // The number of rows and cols in the map matrix
-int map_length = 3;
+int map_length = 6;
 
 // The spacing between each tag (x and y spacings are the same)
 // Unit of measurement: centimeters
-float map_tag_spacing = 250; // Default is 1 meter 
+float map_tag_spacing = 200; // Default is 1 meter 
 // 280 -> 10 inches apart 
 // TODO: make it so that the relative position is based on the
-// altitude also
+// altitude also -> find the relationship
 
 // 180 works for side to side
 
@@ -45,7 +45,7 @@ TagReader::TagReader()
 	td->nthreads = 4;
 	td->seg_sigma = 0.8;
 	td->min_mag = 0;
-	td->seg_decimate = 2; // stops the lag spikes
+	td->seg_decimate = 4; // stops the lag spikes
 	// Set to 1 for better detection but slower rate
 }
 
@@ -274,6 +274,7 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data, cv::
 		theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x);
 		theta2 = qr_angle - theta1;
 		x_d = dis2Mid * cos(theta2);
+		
 		y_d = dis2Mid * sin(theta2);
 		/*theta1 = atan2(frameMidY - mid.y, frameMidX - mid.x) * 180 / PI;
 		theta2_deg = 90 - theta1 - qr_angle_deg; 
@@ -296,9 +297,12 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data, cv::
 		x_d = x_d + rel_x;
 		y_d = y_d + rel_y;
 
+		//x_d = (320 - mid.x) + rel_x;
+		//y_d = (180 - mid.y) + rel_y;
+
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
-		tag.angle = qr_angle;
+		tag.angle = qr_angle_deg;
 		tag.rel_x = x_d;
 		tag.rel_y = y_d;
 		tag.img_x = mid.x;

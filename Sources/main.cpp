@@ -101,10 +101,6 @@ int main()
 
 	bool* running = new bool(true);
 
-	// ofstream to write the txt file for tagdata
-	ofstream tagfile;
-	int count = 0;
-
 	// GUI init
 	initGUI();
 	
@@ -378,7 +374,7 @@ void get_navdata(bool* running, DroneController *m_controller, navdata_t** navda
 		mvwprintw(navwin, 9, 1, "Pitch: %f", nav_demo->pitch);
 		mvwprintw(navwin, 10, 1, "Roll:  %f", nav_demo->roll);
 		mvwprintw(navwin, 11, 1, "Yaw:   %f", nav_demo->yaw);
-		boost::this_thread::sleep(boost::posix_time::microseconds(100));
+		boost::this_thread::sleep(boost::posix_time::microseconds(10000));
 	}
 }
 
@@ -391,7 +387,7 @@ void redraw(bool* running)
 		wrefresh(tagwin);
 		wrefresh(mapwin);
 
-		boost::this_thread::sleep(boost::posix_time::microseconds(70000));
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	}
 }
 
@@ -399,6 +395,15 @@ void redraw(bool* running)
 void get_video(bool *running, ARDrone2Video *m_video, Mat* p, 
 		TagReader *m_tagreader, vector<TagData> *tagdata)
 {
+	// ofstream to write the txt file for tagdata
+	ofstream tagfile;
+	int count = 0;
+	
+	// Taking a picture variables
+	timeval picture_time, current_time;
+	gettimeofday(&picture_time, NULL);
+	long delta = 0;
+
 	while (*running) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(*p);	// Store frame into the Mat
@@ -415,12 +420,30 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 
 		if(p->size().width > 0 && p->size().height > 0) {
 			imshow("Camera", *p);
-			// TODO: save the images
+			// TODO: save the images (copy from the Control1 code)
 			waitKey(1);
 		}
 		else {
 			drawFeedback("ERROR: Mat is not valid");
 		}
+
+		gettimeofday(&current_time, NULL);
+		delta = (current_time.tv_sec  - picture_time.tv_sec) * 1u;
+		if (delta > 0.8) {	// TODO: command to start capture
+			// take a picture
+			char filename[64];
+			char tagfilename[64];
+			sprintf(filename, "image%d.tif", count);
+			sprintf(tagfilename, "image%d.txt", count);
+			imwrite(filename, *p);
+			tagfile.open(tagfilename);
+			for (uint8_t i = 0; i < tagdata->size(); ++i)
+				tagfile << tagdata->at(i).id << " " << 
+					tagdata->at(i).img_x << " " << tagdata->at(i).img_y << endl;
+			tagfile.close();
+			count++;
+			gettimeofday(&picture_time, NULL);
+		}	
 	}
 }
 
@@ -440,8 +463,16 @@ void handle_control(bool *running, DroneController *m_controller,
 	// using 3x3 grid with id=4 in the middle
 	TagData tag;	// get the first tag
 	float sumx = 0.0f, sumy = 0.0f;
-	float rel_posx = 250;	// over tag 4
-	float rel_posy = 250;
+	// Demo waypoints
+	float waypoints[] = {0, 5, 35, 30, 7, 10, 28, 25, 15};
+	int numwaypoints = 9;
+	int currwaypoint = 0;
+	//float goal_x = 550;
+	//float goal_y = 550;
+	float goal_x = 0;
+	float goal_y = 0;
+	float rel_posx = 550;	// over tag 4
+	float rel_posy = 550;
 	float controly = 0, controlx = 0, controlz = 0;
 	/*float errory = 0, errorx = 0;
 	float preerrory = 0, preerrorx = 0;
@@ -497,120 +528,49 @@ void handle_control(bool *running, DroneController *m_controller,
 		// 1. Get the tag position
 		// 2. 
 
-		/*if (tagdata->size() > 0) {
-			TagData tag = tagdata->at(0);
-			lasttagx = tag.img_x;
-			lasttagy = tag.img_y;
-		} 
-		mvwprintw(tagwin, 6, 1, "Last Tag: (%d, %d)", lasttagx, lasttagy);*/
-
-		/*if (lasttagy > 180) { // tag is down, so go down (back)
-			//controly = (lasttagy - 180) / 25000.0f;
-			//errory = (lasttagy - 180) / 25000.0f;
-			controly = 0.01f;
-		} else if (lasttagy < 180) {	// tag is up, go forward
-			//controly = (lasttagy - 180) / 25000.0f;
-			//errory = (lasttagy - 180) / 25000.0f;
-			controly = -0.01f;
-		} else {
-			controly = 0.0f;
-		}
-		if (lasttagx > 320) { // tag is right, so go right)
-			controlx = (lasttagx - 320) / 25000.0f;
-			//controlx = 0.02f;
-		} else if (lasttagx < 320) {	// tag is left, go left 
-			controlx = (lasttagx - 320) / 25000.0f;
-			//controlx = -0.02f;
-		} else {
-			controlx = 0.0f;
-		}*/
-		//if (nav_demo->altitude < 1000) controlz = 0.1;
-		//else controlz = 0;
-		/*errory = ((float)lasttagy - 180.0f);
-		errorx = ((float)lasttagx - 320.0f);
-		integraly = integraly + errory * deltaT;
-		integralx = integralx + errorx * deltaT;
-		derivativex = (errorx - preerrorx) / deltaT;
-		derivativey = (errory - preerrory) / deltaT;
-		controly = (scaleKy) * (errory * Kp + integraly * Ki + 
-				derivativey * Kd);
-		controlx = (scaleKx) * (errorx * Kp + integralx * Ki + 
-				derivativex * Kd);
-		if (navdata != 0 && *navdata != 0) {
-			navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
-			if (nav_demo->velocity._0 > 0) --lasttagx;
-			else if (nav_demo->velocity._0 < 0) ++lasttagx;
-			if (nav_demo->velocity._1 > 0) --lasttagy;
-			else if (nav_demo->velocity._1 < 0) ++lasttagy;
-			mvwprintw(mapwin, 5, 1, "Alt: z = %d", nav_demo->altitude);
-			if (nav_demo->altitude < 850)
-				controlz = 0.7f;
-			else controlz = 0.0f;
-		} else {
-			mvwprintw(mapwin, 5, 1, "Alt: z = N/A");
-			controlz = 0.0f;
-		}
-		if (controly != 0.0f || controlx != 0.0f || controlz != 0.0f) {
-			m_controller->control_move(true, controlx, controly, controlz, 0);
-			//m_controller->control_move(true, 0, controly, 0, 0);
-			mvwprintw(tagwin, 8, 1, "Control Sig: x = %f, y = %f)", controlx, controly);
-			//boost::this_thread::sleep(boost::posix_time::microseconds(100000)); // delay for 0.01 seconds
-			boost::this_thread::sleep(boost::posix_time::microseconds((int64_t)(deltaT * 1000000))); // delay for 0.01 seconds
-			//m_controller->control_move(false, 0, 0, 0, 0);
-			m_controller->control_move(true, 0, 0, 0, 0);
-		}*/
-
-		// TODO: velocity PID 
-		// Need to consider the the velocity doesn't go to 0 with control sig is 0
-		// So revise this to only "tap" the drone in a velocity
-
-		// Run this every 2 seconds
-		/*gettimeofday(&currtime, NULL);
-		timediff = (currtime.tv_sec  - localcmd.tv_sec) * 1000000 + 
-			(currtime.tv_usec - localcmd.tv_usec);
-		if (timediff > 200000) {
-			if (tagdata->size() > 0) {
-				TagData tag = tagdata->at(0);	// get the first tag
-				lasttagx = tag.img_x;
-				lasttagy = tag.img_y;
-			} if (lasttagx > 320) {	// tag is to the right: go right
-				controlx = 0.10f;
-			} else if (lasttagx < 320) { // tag is to the left: go left
-				controlx = -0.10f;
-			} else {
-				controlx = 0.0f;
-			}
-			if (lasttagy > 180) {	// tag is down, go down
-				controly = 0.08f;
-			} else if (lasttagy < 180) { // tag is up: go up
-				controly = -0.08f;
-			} else {
-				controly = 0.0f;
-			}
-			if (navdata != 0 && *navdata != 0) {
-				navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
-				if (nav_demo->altitude < 800)
-					controlz = 0.7f;
-				else controlz = 0.0f;
-			}
-			//m_controller->control_move(true, controlx, controly, controlz, 0);
-			*cmdsent = true;
-			gettimeofday(&localcmd, NULL);
-			gettimeofday(timecmdsent, NULL);
-			*cmdduration = 0.10f;
-		}*/
-
+		// TODO: Sequence of waypoints:
+		// 0, 5, 35, 30, 6, 10, 28, 25, 13, 15, 21, 20, Center
+		// Center = (2.5, 2.5)
+		// (0,0), (5,0), (5,5), (0,5), (0,1), (
 		// Run this every 2 seconds
 		gettimeofday(&currtime, NULL);
 		timediff = (currtime.tv_sec  - localcmd.tv_sec) * 1000000 + 
 			(currtime.tv_usec - localcmd.tv_usec);
-		if (timediff > 150000) {
-			/*if (tagdata->size() > 0) { // just take the first tag for now
-				TagData tag = tagdata->at(0);	// get the first tag
-				rel_posx = tag.rel_x;
-				rel_posy = tag.rel_y;
-			}*/
-			if (tagdata->size() > 0) {
+		if (tagdata->size() > 0) { // just take the first tag for now
+			TagData tag; 				
+			for (int i = 0; i < tagdata->size(); ++i) {
+				// Have to consider the angle of the rotor
+				if (tagdata->at(i).id == waypoints[currwaypoint]) {
+					tag = tagdata->at(i);
+					break;
+				}
+				tag = tagdata->at(i);
+			}
+			/*if (tagdata->size() > 1)
+				tag = tagdata->at(1);	// get the first tag
+			else tag = tagdata->at(0);*/
+			rel_posx = tag.rel_x;
+			rel_posy = tag.rel_y;
+
+			// Go to the next waypoint if close enough to the current goal
+			if (rel_posx - goal_x > -120 && rel_posx - goal_x < 120 &&
+					rel_posy - goal_y > -120 && rel_posy - goal_y < 120) {
+				if (currwaypoint < numwaypoints - 1) ++currwaypoint;
+				if (currwaypoint == numwaypoints - 1) 
+					m_controller->control_basic(LAND);
+				int newtagid = waypoints[currwaypoint];
+				goal_x = newtagid % map_length * map_tag_spacing;
+				goal_y = (int)(newtagid / map_length) * map_tag_spacing;
+			}
+
+			werase(mapwin);
+			box(mapwin, 0, 0);
+			mvwprintw(mapwin, 1, 1, "Pos: %f, %f", rel_posx, rel_posy);
+			mvwprintw(mapwin, 3, 1, "Des: %f, %f", goal_x, goal_y);
+		}
+		if (timediff > 350000) {
+			// Get the average estimated position
+			/*if (tagdata->size() > 0) {
 				sumx = 0;
 				sumy = 0;
 				for (int i = 0; i < tagdata->size(); ++i) {
@@ -620,32 +580,37 @@ void handle_control(bool *running, DroneController *m_controller,
 				}
 				rel_posx = sumx / tagdata->size();
 				rel_posy = sumy / tagdata->size();
-			} 
-		   	if (rel_posx > 250) {	// tag is to the right: go right
-				controlx = -0.08f;
-			} else if (rel_posx < 250) { // tag is to the left: go left
-				controlx = 0.08f;
-			} else {
-				controlx = 0.0f;
-			}
-			if (rel_posy > 250) {	// tag is down, go down
-				controly = 0.13f;
-			} else if (rel_posy < 250) { // tag is up: go up
-				controly = -0.13f;
+				mvwprintw(mapwin, 1, 1, "Pos: %f, %f", rel_posx, rel_posy);
+			}*/
+			if (rel_posy > goal_y) {	// tag is down, go down
+				controly = 0.09f;
+			} else if (rel_posy < goal_y) { // tag is up: go up
+				controly = -0.09f;
 			} else {
 				controly = 0.0f;
 			}
+		   	if (rel_posx > goal_x) {	// tag is to the right: go right
+				controlx = -0.08f;
+			} else if (rel_posx < goal_x) { // tag is to the left: go left
+				controlx = 0.18f;
+			} else {
+				controlx = 0.0f;
+			}
 			if (navdata != 0 && *navdata != 0) {
 				navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
-				if (nav_demo->altitude < 800)
-					controlz = 0.0f;
+				if (nav_demo->altitude < 900)
+					controlz = 0.7f;
 				else controlz = 0.0f;
 			}
+			if (rel_posx - goal_x > -60 && rel_posx - goal_x < 60 &&
+					rel_posy - goal_y > -60 && rel_posy - goal_y < 60)
+				m_controller->control_move(false, 0, 0, 0, 0);
+			else 
 			m_controller->control_move(true, controlx, controly, controlz, 0);
 			*cmdsent = true;
 			gettimeofday(&localcmd, NULL);
 			gettimeofday(timecmdsent, NULL);
-			*cmdduration = 0.100f;
+			*cmdduration = 0.18f;
 		}
 
 		// Handle timing of user inputted commands

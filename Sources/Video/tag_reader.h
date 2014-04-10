@@ -23,6 +23,18 @@ extern "C" {
 #include "apriltags/zarray.h"
 }
 
+// The number of rows and cols in the map matrix
+extern int map_length;
+
+// The spacing between each tag (x and y spacings are the same)
+// Unit of measurement: centimeters
+extern float map_tag_spacing; // Default is 1 meter 
+// 280 -> 10 inches apart 
+// TODO: make it so that the relative position is based on the
+// altitude also -> find the relationship
+
+// 180 works for side to side
+
 struct TagData
 {
 	float distance;
