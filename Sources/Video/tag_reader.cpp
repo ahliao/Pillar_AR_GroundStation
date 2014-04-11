@@ -153,18 +153,20 @@ void TagReader::process_Mat(const cv::Mat& img, std::vector<TagData> *data)
 		//y_d = y_d * distance_M + distance_B;
 		
 		// TODO: take average position for multiple tags
-		//x_ab = x_d + rel_x;
-		//y_ab = y_d + rel_y;
+		x_d = x_d + rel_x;
+		y_d = y_d + rel_y;
+
+		//x_d = (320 - mid.x) + rel_x;
+		//y_d = (180 - mid.y) + rel_y;
 
 		// put the data into the QR_Data struct
 		tag.distance = qr_distance;
-		tag.angle = qr_angle;
+		tag.angle = qr_angle_deg;
 		tag.rel_x = x_d;
 		tag.rel_y = y_d;
 		tag.img_x = mid.x;
 		tag.img_y = mid.y;
 		tag.id = det->id;
-		tag.side_length = qr_length;
 		data->push_back(tag);
 
 		april_tag_detection_destroy(det);

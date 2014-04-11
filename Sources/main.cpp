@@ -403,11 +403,12 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 	timeval picture_time, current_time;
 	gettimeofday(&picture_time, NULL);
 	long delta = 0;
+	Mat out = Mat(360, 640, CV_8UC3, Scalar(0,200,0));	// Mat to store video frame
 
 	while (*running) {
 		m_video->fetch();			// Decode the frame
 		m_video->latestImage(*p);	// Store frame into the Mat
-		m_tagreader->process_Mat(*p, tagdata, *p);	// Image processing
+		m_tagreader->process_Mat(*p, tagdata, out);	// Image processing
 
 		// Display the tag data
 		werase(tagwin);
@@ -419,7 +420,7 @@ void get_video(bool *running, ARDrone2Video *m_video, Mat* p,
 		}
 
 		if(p->size().width > 0 && p->size().height > 0) {
-			imshow("Camera", *p);
+			imshow("Camera", out);
 			// TODO: save the images (copy from the Control1 code)
 			waitKey(1);
 		}
@@ -464,7 +465,7 @@ void handle_control(bool *running, DroneController *m_controller,
 	TagData tag;	// get the first tag
 	float sumx = 0.0f, sumy = 0.0f;
 	// Demo waypoints
-	float waypoints[] = {0, 5, 35, 30, 7, 10, 28, 25, 15};
+	float waypoints[] = {7, 10, 35, 30, 7, 10, 28, 25, 15};
 	int numwaypoints = 9;
 	int currwaypoint = 0;
 	//float goal_x = 550;
@@ -599,11 +600,11 @@ void handle_control(bool *running, DroneController *m_controller,
 			if (navdata != 0 && *navdata != 0) {
 				navdata_demo_t* nav_demo = (navdata_demo_t*)((*navdata)->options);
 				if (nav_demo->altitude < 900)
-					controlz = 0.7f;
+					controlz = 0.9f;
 				else controlz = 0.0f;
 			}
-			if (rel_posx - goal_x > -60 && rel_posx - goal_x < 60 &&
-					rel_posy - goal_y > -60 && rel_posy - goal_y < 60)
+			if (rel_posx - goal_x > -80 && rel_posx - goal_x < 80 &&
+					rel_posy - goal_y > -80 && rel_posy - goal_y < 80)
 				m_controller->control_move(false, 0, 0, 0, 0);
 			else 
 			m_controller->control_move(true, controlx, controly, controlz, 0);
